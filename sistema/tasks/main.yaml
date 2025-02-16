@@ -1,0 +1,17 @@
+---
+# sistema/tasks/main.yaml
+
+- name: Importar configurações base
+  ansible.builtin.import_tasks: 00-base.yaml
+
+- name: Importar configurações de repositório
+  ansible.builtin.import_tasks: 01-extrepo.yaml
+
+- name: Importar configurações de usuário
+  ansible.builtin.import_tasks: 02-usuario.yaml
+
+- name: Importar configurações do SDKMAN
+  ansible.builtin.import_tasks: 03-sdkman.yaml
+
+- name: Importar configurações das extensões GNOME
+  ansible.builtin.import_tasks: 04-gnome-extensions.yaml
