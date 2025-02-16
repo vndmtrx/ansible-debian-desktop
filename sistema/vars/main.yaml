@@ -1,0 +1,102 @@
+---
+# sistema/vars/main.yaml
+
+# Controla se o sistema será atualizado
+# Usado em: sistema/tasks/00-base.yaml
+atualiza_sistema: true
+
+# Pacotes essenciais do sistema
+# Usado em: sistema/tasks/00-base.yaml
+pacotes_sistema:
+  - ufw
+  - flatpak
+
+# Lista de serviços do sistema que devem estar ativos
+# Usado em: sistema/tasks/00-base.yaml
+servicos_sistema:
+  - ufw.service
+
+# Aplicações de terminal
+# Usado em: sistema/tasks/00-base.yaml
+apps_terminal:
+  - cowsay
+  - neofetch
+  - git
+  - exa
+  - gdu
+  - btop
+  - mtr
+  - glances
+  - fzf
+  - gufw
+
+# Aplicações com interface gráfica
+# Usado em: sistema/tasks/00-base.yaml
+apps_gui:
+  - tilix
+  - chromium
+
+# Aplicações Flatpak
+# Usado em: sistema/tasks/00-base.yaml
+apps_flatpak:
+  - org.gtk.Gtk3theme.adw-gtk3
+  - org.gtk.Gtk3theme.adw-gtk3-dark
+  - org.gtk.Gtk3theme.Adwaita-dark
+  - org.inkscape.Inkscape
+  - org.gimp.GIMP
+  - com.stremio.Stremio
+  - org.wireshark.Wireshark
+  - com.github.tchx84.Flatseal
+  - io.github.flattool.Warehouse
+
+# Repositórios Extrepo a serem habilitados
+# Usado em: sistema/tasks/01-extrepo.yaml
+repos_extrepo:
+  - librewolf
+  - waydroid
+  - virtualbox
+  - vscodium
+
+# Pacotes a serem instalados dos repositórios Extrepo
+# Usado em: sistema/tasks/01-extrepo.yaml
+pacotes_extrepo:
+  - librewolf
+  - waydroid
+  - virtualbox-7.1
+  - codium
+
+# Aliases para o Bash
+# Usado em: sistema/tasks/02-usuario.yaml
+aliases_bash:
+  - 'ip="ip --color"'
+  - 'ls="exa --color=auto"'
+  - 'grep="grep --color=auto"'
+  - 'ts="tailspin"'
+  - 'll="ls -lah"'
+  - 'vg="vagrant"'
+  - 'jc="sudo journalctl -f | tailspin"'
+  - 'mtr="mtr -t"'
+
+# Versões do Java a serem instaladas via SDKMAN
+# Usado em: sistema/tasks/03-sdkman.yaml
+versoes_java:
+  - '23-open'
+  - '23.0.2-oracle'
+
+# Esta será definida como padrão
+java_default: '23.0.2-oracle'
+
+# IDs das extensões GNOME a serem instaladas
+# Usado em: sistema/tasks/04-gnome-extensions.yaml
+extensoes_gnome:
+  - 615   # AppIndicator and KStatusNotifierItem Support
+  - 3193  # Blur my Shell
+  - 4679  # Burn my Windows
+  - 517   # Caffeine
+  - 4167  # Custom Hot Corners - Extended
+  - 307   # Dash to Dock
+  - 779   # Clipboard Indicator
+  - 4099  # No Overview
+  - 7065  # Tiling Shell
+  - 4812  # Wallpaper Switcher
+  - 1007  # Window Is Ready - Notification Remover
