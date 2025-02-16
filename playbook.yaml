@@ -1,0 +1,9 @@
+---
+# Para instalar: ansible-playbook playbook.yaml --ask-become-pass
+
+- name: Instalação de diversos componentes que uso com frequência
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  roles:
+    - role: sistema
