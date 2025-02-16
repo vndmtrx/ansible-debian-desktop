@@ -1,0 +1,64 @@
+---
+# sistema/tasks/01-extrepo.yaml
+
+- name: Instalações do Extrepo
+  become: true
+  block:
+    - name: Garante que o extrepo está instalado
+      ansible.builtin.apt:
+        name: extrepo
+        state: present
+      register: extrepo_install
+      failed_when:
+        - extrepo_install.failed is defined
+        - extrepo_install.failed
+
+    - name: Configura políticas de licença do extrepo
+      ansible.builtin.copy:
+        dest: /etc/extrepo/config.yaml
+        content: |
+          ---
+          url: https://extrepo-team.pages.debian.net/extrepo-data
+          dist: debian
+          version: bookworm
+          enabled_policies:
+          - main
+          - contrib
+          - non-free
+          - non-free-firmware
+        backup: true
+        mode: '0644'
+        owner: root
+        group: root
+      when: extrepo_install is succeeded
+
+    - name: Verifica repositórios extrepo existentes
+      ansible.builtin.stat:
+        path: "/etc/apt/sources.list.d/extrepo_{{ item }}.sources"
+      loop: "{{ repos_extrepo }}"
+      register: extrepo_files
+
+    - name: Habilita repositórios via extrepo
+      ansible.builtin.command:
+        cmd: "extrepo enable {{ item.item }}"
+      loop: "{{ extrepo_files.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      when:
+        - extrepo_install is succeeded
+        - not item.stat.exists
+      register: extrepo_result
+      changed_when: extrepo_result.rc == 0
+      failed_when: extrepo_result.rc != 0
+
+    - name: Atualiza cache do apt após adicionar repositórios
+      ansible.builtin.apt:
+        update_cache: true
+      when: extrepo_result is succeeded
+
+    - name: Instala pacotes dos repositórios habilitados
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ pacotes_extrepo }}"
+      when: extrepo_result is succeeded

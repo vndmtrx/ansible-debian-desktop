@@ -1,0 +1,117 @@
+---
+# sistema/tasks/00-base.yaml
+
+- name: Configura o TZ para o Brasil
+  community.general.timezone:
+    name: America/Sao_Paulo
+  become: true
+
+- name: Atualiza cache do apt
+  ansible.builtin.apt:
+    update_cache: true
+  become: true
+  when: atualiza_sistema | bool
+
+- name: Realiza atualização completa do sistema
+  ansible.builtin.apt:
+    upgrade: full
+    autoremove: true
+    autoclean: true
+  become: true
+  when: atualiza_sistema | bool
+
+- name: Instala aplicações de sistema
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ pacotes_sistema }}"
+  become: true
+
+- name: Habilita serviços de sistema
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop: "{{ servicos_sistema }}"
+  become: true
+
+- name: Instala aplicações relacionados a terminal
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ apps_terminal }}"
+  become: true
+
+- name: Instala aplicações de uso gráfico
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ apps_gui }}"
+  become: true
+
+- name: Instala repositório Flathub
+  community.general.flatpak_remote:
+    name: flathub
+    state: present
+    flatpakrepo_url: https://dl.flathub.org/repo/flathub.flatpakrepo
+  become: true
+
+- name: Instala aplicações do Flatpak
+  community.general.flatpak:
+    name: "{{ item }}"
+    state: present
+    method: system
+  loop: "{{ apps_flatpak }}"
+  become: true
+
+- name: Instalação do Tailspin
+  block:
+    - name: Verifica se Tailspin está instalado
+      ansible.builtin.command: which tailspin
+      register: tailspin_check
+      failed_when: false
+      changed_when: false
+
+    - name: Cria diretório temporário para download
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: tailspin
+      register: temp_dir
+      when: tailspin_check.rc != 0
+
+    - name: Download do Tailspin
+      ansible.builtin.get_url:
+        url: https://github.com/bensadeh/tailspin/releases/latest/download/tailspin-x86_64-unknown-linux-musl.tar.gz
+        dest: "{{ temp_dir.path }}/tailspin.tar.gz"
+        mode: '0644'
+      when: tailspin_check.rc != 0
+
+    - name: Extrai o arquivo
+      ansible.builtin.unarchive:
+        src: "{{ temp_dir.path }}/tailspin.tar.gz"
+        dest: "{{ temp_dir.path }}"
+        remote_src: true
+      when: tailspin_check.rc != 0
+
+    - name: Instala o binário Tailspin
+      become: true
+      ansible.builtin.copy:
+        src: "{{ temp_dir.path }}/tspin"
+        dest: /usr/local/bin/tspin
+        mode: '0755'
+        remote_src: true
+      when: tailspin_check.rc != 0
+
+    - name: Cria link simbólico para tailspin
+      become: true
+      ansible.builtin.file:
+        src: /usr/local/bin/tspin
+        dest: /usr/local/bin/tailspin
+        state: link
+      when: tailspin_check.rc != 0
+
+    - name: Limpa diretório temporário
+      ansible.builtin.file:
+        path: "{{ temp_dir.path }}"
+        state: absent
+      when: tailspin_check.rc != 0

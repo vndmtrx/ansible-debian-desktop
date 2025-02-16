@@ -1,0 +1,32 @@
+---
+# sistema/tasks/04-gnome-extensions.yaml
+
+- name: Configuração das extensões GNOME
+  block:
+    - name: Instala gnome-shell-extensions
+      become: true
+      ansible.builtin.apt:
+        name: gnome-shell-extensions
+        state: present
+
+    - name: Cria diretório bin no home
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/bin"
+        state: directory
+        mode: '0755'
+
+    - name: Instala gnome-shell-extension-installer
+      ansible.builtin.get_url:
+        url: "https://github.com/brunelli/gnome-shell-extension-installer/raw/master/gnome-shell-extension-installer"
+        dest: "{{ ansible_env.HOME }}/bin/gnome-shell-extension-installer"
+        mode: '0755'
+        force: false
+
+    - name: Instala extensões do GNOME
+      ansible.builtin.shell: |
+        gnome-shell-extension-installer --yes {{ item }}
+      loop: "{{ extensoes_gnome }}"
+      environment:
+        DBUS_SESSION_BUS_ADDRESS: unix:path=/run/user/{{ ansible_user_uid }}/bus
+      register: extension_install
+      changed_when: extension_install.rc == 0 and 'already installed' not in extension_install.stdout

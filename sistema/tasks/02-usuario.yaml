@@ -1,0 +1,62 @@
+---
+# sistema/tasks/02-usuario.yaml
+
+- name: Ajusta o LibreWolf para usar o touch
+  ansible.builtin.lineinfile:
+    path: /etc/security/pam_env.conf
+    regexp: '^MOZ_USE_XINPUT2 DEFAULT=1$'
+    line: MOZ_USE_XINPUT2 DEFAULT=1
+  become: true
+
+- name: Adiciona configuração do Tilix ao .bashrc
+  ansible.builtin.blockinfile:
+    path: "{{ ansible_env.HOME }}/.bashrc"
+    marker: "# {mark} TILIX CONFIGURATION"
+    block: |
+      if [ $TILIX_ID ] || [ $VTE_VERSION ]; then
+        source /etc/profile.d/vte.sh
+      fi
+    state: present
+  become: false
+
+- name: Configura limpeza automática da pasta Downloads
+  ansible.builtin.cron:
+    name: "Limpeza automática de arquivos antigos em Downloads"
+    minute: "0"
+    hour: "*"
+    user: "{{ ansible_env.USER }}"
+    job: 'find "$HOME/Downloads" -type f -mtime +30 -exec gio trash {} \; 2>/dev/null || true'
+    # Equivalente a: 0 * * * * find "$HOME/Downloads" -type f -mtime +30 -exec gio trash {} \; 2>/dev/null || true
+  become: false
+
+- name: Configura aliases para Bash
+  become: false
+  block:
+    - name: Verificar se .bashrc possui configuração de aliases
+      ansible.builtin.command:
+        cmd: grep -q "if \[ -f ~/.bash_aliases \]" {{ ansible_env.HOME }}/.bashrc
+      register: bashrc_check
+      changed_when: false
+      failed_when: false
+
+    - name: Cria arquivo .bash_aliases
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/.bash_aliases"
+        state: touch
+        mode: '0600'
+      when: bashrc_check.rc == 0
+
+    - name: Adiciona aliases
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_env.HOME }}/.bash_aliases"
+        regexp: '^alias {{ item | regex_escape }}='
+        line: 'alias {{ item }}'
+        state: present
+      loop: "{{ aliases_bash }}"
+      when: bashrc_check.rc == 0
+  # Falha se o .bashrc não tiver a configuração necessária
+  rescue:
+    - name: Falha se .bashrc não estiver configurado corretamente
+      ansible.builtin.fail:
+        msg: "O .bashrc não possui a configuração padrão para carregar .bash_aliases"
+      when: bashrc_check.rc != 0

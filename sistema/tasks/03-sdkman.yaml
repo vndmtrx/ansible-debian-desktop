@@ -1,0 +1,71 @@
+---
+# sistema/tasks/03-sdkman.yaml
+
+- name: Instalação do SDKMAN!
+  become: false
+  block:
+    - name: Instala dependências do SDKMAN!
+      become: true
+      ansible.builtin.apt:
+        name:
+          - zip
+          - unzip
+          - curl
+        state: present
+
+    - name: Verifica se SDKMAN! já está instalado
+      ansible.builtin.stat:
+        path: "{{ ansible_env.HOME }}/.sdkman/bin/sdkman-init.sh"
+      register: sdkman_init
+
+    - name: Baixa script de instalação do SDKMAN!
+      ansible.builtin.uri:
+        url: "https://get.sdkman.io"
+        dest: "/tmp/sdkman_install.sh"
+        mode: '0755'
+      when: not sdkman_init.stat.exists
+
+    - name: Executa script de instalação do SDKMAN!
+      ansible.builtin.shell: |
+        /tmp/sdkman_install.sh
+      environment:
+        SDKMAN_DIR: "{{ ansible_env.HOME }}/.sdkman"
+      when: not sdkman_init.stat.exists
+      register: sdkman_install
+      changed_when: sdkman_install.rc == 0
+      args:
+        executable: /bin/bash
+        creates: "{{ ansible_env.HOME }}/.sdkman/bin/sdkman-init.sh"
+
+    - name: Instala versões do Java via SDKMAN
+      ansible.builtin.shell: |
+        source "{{ ansible_env.HOME }}/.sdkman/bin/sdkman-init.sh"
+        sdk install java {{ item }} -y
+      loop: "{{ versoes_java }}"
+      register: java_install
+      changed_when: java_install.rc == 0 and 'already installed' not in java_install.stdout
+      args:
+        executable: /bin/bash
+      environment:
+        SDKMAN_DIR: "{{ ansible_env.HOME }}/.sdkman"
+
+    - name: Instala e define Java Oracle como padrão
+      ansible.builtin.shell: |
+        source "{{ ansible_env.HOME }}/.sdkman/bin/sdkman-init.sh"
+        sdk default java {{ java_default }}
+      register: java_oracle_install
+      changed_when: java_oracle_install.rc == 0 and 'already installed' not in java_oracle_install.stdout
+      args:
+        executable: /bin/bash
+      environment:
+        SDKMAN_DIR: "{{ ansible_env.HOME }}/.sdkman"
+
+    # - name: Adiciona configuração do SDKMAN! ao .bashrc
+    #   ansible.builtin.blockinfile:
+    #     path: "{{ ansible_env.HOME }}/.bashrc"
+    #     marker: "# {mark} SDKMAN CONFIGURATION"
+    #     block: |
+    #       export SDKMAN_DIR="$HOME/.sdkman"
+    #       [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
+    #     state: present
+    #   when: not sdkman_init.stat.exists
