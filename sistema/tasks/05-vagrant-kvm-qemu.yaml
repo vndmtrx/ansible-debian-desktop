@@ -5,7 +5,7 @@
   ansible.builtin.apt:
     name: "{{ item }}"
     state: present
-  loop: "{{ pacotes_kvm }}"
+  loop: "{{ pacotes_virt }}"
   become: true
 
 - name: Adiciona usuário aos grupos de virtualização
