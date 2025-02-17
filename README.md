@@ -21,7 +21,7 @@ O playbook está organizado em módulos que tratam de diferentes aspectos do sis
 - Extrepo configurado com suporte a repositórios non-free
 - LibreWolf como navegador principal focado em privacidade
 - VSCodium para desenvolvimento
-- VirtualBox para virtualização
+- VirtualBox para virtualização tradicional
 - Waydroid para suporte a aplicativos Android
 
 ### Configurações de Usuário
@@ -40,6 +40,13 @@ O playbook está organizado em módulos que tratam de diferentes aspectos do sis
 - Blur my Shell para efeitos visuais modernos
 - Dash to Dock para um dock personalizável
 - Outras extensões para produtividade
+
+### Virtualização
+- QEMU/KVM para virtualização nativa de alto desempenho
+- Virt-Manager como interface gráfica para gerenciamento de VMs
+- Configuração automática de grupos e permissões
+- Bridge networking para conectividade avançada
+- Integração completa com libvirt
 
 ## Uso
 
