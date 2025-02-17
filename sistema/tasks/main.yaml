@@ -16,5 +16,5 @@
 - name: Importar configurações das extensões GNOME
   ansible.builtin.import_tasks: 04-gnome-extensions.yaml
 
-- name: Importar configurações das extensões GNOME
-  ansible.builtin.import_tasks: 05-kvm-qemu.yaml
+- name: Importar configurações de virtualização
+  ansible.builtin.import_tasks: 05-vagrant-kvm-qemu.yaml
