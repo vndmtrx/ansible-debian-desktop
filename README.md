@@ -21,7 +21,7 @@ O playbook está organizado em módulos que tratam de diferentes aspectos do sis
 - Extrepo configurado com suporte a repositórios non-free
 - LibreWolf como navegador principal focado em privacidade
 - VSCodium para desenvolvimento
-- VirtualBox para virtualização tradicional
+- VirtualBox para virtualização
 - Waydroid para suporte a aplicativos Android
 
 ### Configurações de Usuário
@@ -35,18 +35,18 @@ O playbook está organizado em módulos que tratam de diferentes aspectos do sis
 - Java 23 em duas distribuições (Oracle e OpenJDK)
 - Todas as configurações necessárias no ambiente
 
+### Virtualização e Containers
+- VirtualBox e KVM/QEMU para virtualização
+- Vagrant com plugins essenciais (cachier, hostmanager, libvirt)
+- Configuração automática de grupos e permissões
+- Integração com libvirt para melhor desempenho
+- Interface gráfica virt-manager para gerenciamento de VMs
+
 ### GNOME
 - Extensões selecionadas do GNOME Shell
 - Blur my Shell para efeitos visuais modernos
 - Dash to Dock para um dock personalizável
 - Outras extensões para produtividade
-
-### Virtualização
-- QEMU/KVM para virtualização nativa de alto desempenho
-- Virt-Manager como interface gráfica para gerenciamento de VMs
-- Configuração automática de grupos e permissões
-- Bridge networking para conectividade avançada
-- Integração completa com libvirt
 
 ## Uso
 
