@@ -24,8 +24,10 @@
 
     - name: Instala extensões do GNOME
       ansible.builtin.shell: |
-        gnome-shell-extension-installer --yes {{ item }}
+        gnome-shell-extension-installer --yes {{ item.id }}
       loop: "{{ extensoes_gnome }}"
+      loop_control:
+        label: "{{ item.nome }}"
       environment:
         DBUS_SESSION_BUS_ADDRESS: unix:path=/run/user/{{ ansible_user_uid }}/bus
       register: extension_install
