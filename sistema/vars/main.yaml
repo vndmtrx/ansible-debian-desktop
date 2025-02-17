@@ -100,9 +100,13 @@ extensoes_gnome:
   - { id: 4812, nome: "Wallpaper Switcher" }
   - { id: 1007, nome: "Window Is Ready - Notification Remover" }
 
-# Pacotes necessários para virtualização KVM
-# Usado em: sistema/tasks/05-kvm-qemu.yaml
-pacotes_kvm:
+# Pacotes necessários para virtualização
+# Usado em: sistema/tasks/05-vagrant-kvm-qemu.yaml
+pacotes_virt:
+  - vagrant
+  - vagrant-cachier
+  - vagrant-hostmanager
+  - vagrant-libvirt
   - qemu-kvm
   - qemu-utils
   - libvirt-daemon-system
