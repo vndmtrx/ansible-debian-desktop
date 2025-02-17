@@ -1,0 +1,25 @@
+---
+# sistema/tasks/05-kvm-qemu.yaml
+
+- name: Instala pacotes de virtualização
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ pacotes_kvm }}"
+  become: true
+
+- name: Adiciona usuário aos grupos de virtualização
+  ansible.builtin.user:
+    name: "{{ ansible_env.USER }}"
+    groups: "{{ item }}"
+    append: true
+  loop: "{{ grupos_kvm }}"
+  become: true
+
+- name: Configura serviço libvirtd
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop: "{{ servicos_kvm }}"
+  become: true
