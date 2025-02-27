@@ -10,8 +10,8 @@
 - name: Importar configurações de usuário
   ansible.builtin.import_tasks: 02-usuario.yaml
 
-- name: Importar configurações do SDKMAN
-  ansible.builtin.import_tasks: 03-sdkman.yaml
+- name: Importar configurações do ASDF
+  ansible.builtin.import_tasks: 03-asdf.yaml
 
 - name: Importar configurações das extensões GNOME
   ansible.builtin.import_tasks: 04-gnome-extensions.yaml
