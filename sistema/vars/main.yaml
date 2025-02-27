@@ -77,14 +77,27 @@ aliases_bash:
   - 'jc="sudo journalctl -f | tailspin"'
   - 'mtr="mtr -t"'
 
-# Versões do Java a serem instaladas via SDKMAN
-# Usado em: sistema/tasks/03-sdkman.yaml
-versoes_java:
-  - '23-open'
-  - '23.0.2-oracle'
+# Versão do ASDF
+# Usado em: sistema/tasks/03-asdf.yaml
+versao_asdf: 'v0.16.4'
 
-# Esta será definida como padrão
-java_default: '23.0.2-oracle'
+# Versões do Java a serem instaladas via ASDF
+# Usado em: sistema/tasks/03-asdf.yaml
+versoes_java_asdf:
+  - 'openjdk-23'
+  - 'oracle-23'
+
+# Versão do Java a ser definida como padrão
+# Usado em: sistema/tasks/03-asdf.yaml
+java_default_asdf: 'oracle-23'
+
+# Versão do Ruby a ser instalada
+# Usado em: sistema/tasks/03-asdf.yaml
+versao_ruby: '3.2.2'
+
+# Versão do Rails a ser instalada
+# Usado em: sistema/tasks/03-asdf.yaml
+versao_rails: '8.0.1'
 
 # IDs das extensões GNOME a serem instaladas
 # Usado em: sistema/tasks/04-gnome-extensions.yaml
