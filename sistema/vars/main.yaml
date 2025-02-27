@@ -1,5 +1,6 @@
 ---
 # sistema/vars/main.yaml
+# yamllint disable rule:commas
 
 # Controla se o sistema será atualizado
 # Usado em: sistema/tasks/00-base.yaml
@@ -99,17 +100,42 @@ versao_ruby: '3.2.2'
 # Usado em: sistema/tasks/03-asdf.yaml
 versao_rails: '8.0.1'
 
-# IDs das extensões GNOME a serem instaladas
-# Usado em: sistema/tasks/04-gnome-extensions.yaml
 extensoes_gnome:
-  - 615   # AppIndicator and KStatusNotifierItem Support
-  - 3193  # Blur my Shell
-  - 4679  # Burn my Windows
-  - 517   # Caffeine
-  - 4167  # Custom Hot Corners - Extended
-  - 307   # Dash to Dock
-  - 779   # Clipboard Indicator
-  - 4099  # No Overview
-  - 7065  # Tiling Shell
-  - 4812  # Wallpaper Switcher
-  - 1007  # Window Is Ready - Notification Remover
+  - { id: 615,  nome: "AppIndicator and KStatusNotifierItem Support" }
+  - { id: 3193, nome: "Blur my Shell" }
+  - { id: 4679, nome: "Burn my Windows" }
+  - { id: 517,  nome: "Caffeine" }
+  - { id: 4167, nome: "Custom Hot Corners - Extended" }
+  - { id: 307,  nome: "Dash to Dock" }
+  - { id: 779,  nome: "Clipboard Indicator" }
+  - { id: 4099, nome: "No Overview" }
+  - { id: 7065, nome: "Tiling Shell" }
+  - { id: 4812, nome: "Wallpaper Switcher" }
+  - { id: 1007, nome: "Window Is Ready - Notification Remover" }
+
+# Pacotes necessários para virtualização
+# Usado em: sistema/tasks/05-vagrant-kvm-qemu.yaml
+pacotes_virt:
+  - vagrant
+  - vagrant-cachier
+  - vagrant-hostmanager
+  - vagrant-libvirt
+  - qemu-kvm
+  - qemu-utils
+  - libvirt-daemon-system
+  - libvirt-clients
+  - bridge-utils
+  - virtinst
+  - virt-manager
+
+# Grupos necessários para o usuário
+# Usado em: kvm/tasks/main.yaml
+grupos_kvm:
+  - libvirt
+  - kvm
+  - libvirt-qemu
+
+# Serviços que devem estar ativos
+# Usado em: kvm/tasks/main.yaml
+servicos_kvm:
+  - libvirtd.service

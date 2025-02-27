@@ -1,6 +1,6 @@
-# ansible-debian-desktop
+# 🔧 Ansible Debian Desktop
 
-🔧 Ansible playbook para automatizar a configuração de uma instalação desktop de Debian
+Ansible playbook para automatizar a configuração de uma instalação desktop de Debian
 
 Este projeto nasceu da minha necessidade pessoal de manter meus computadores sempre atualizados e padronizados. Como costumo formatar meus computadores com frequência, seja para testar novas configurações ou manter o sistema limpo, precisava de uma forma automatizada e confiável de recriar meu ambiente de trabalho exatamente como gosto.
 
@@ -34,6 +34,13 @@ O playbook está organizado em módulos que tratam de diferentes aspectos do sis
 - SDKMAN! para gerenciamento de SDKs
 - Java 23 em duas distribuições (Oracle e OpenJDK)
 - Todas as configurações necessárias no ambiente
+
+### Virtualização e Containers
+- VirtualBox e KVM/QEMU para virtualização
+- Vagrant com plugins essenciais (cachier, hostmanager, libvirt)
+- Configuração automática de grupos e permissões
+- Integração com libvirt para melhor desempenho
+- Interface gráfica virt-manager para gerenciamento de VMs
 
 ### GNOME
 - Extensões selecionadas do GNOME Shell
