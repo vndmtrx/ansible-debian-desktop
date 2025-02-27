@@ -77,6 +77,7 @@ aliases_bash:
   - 'vg="vagrant"'
   - 'jc="sudo journalctl -f | tailspin"'
   - 'mtr="mtr -t"'
+  - 'rebootbios="sudo systemctl reboot --firmware"'
 
 # Versão do ASDF
 # Usado em: sistema/tasks/03-asdf.yaml
