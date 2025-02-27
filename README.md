@@ -14,7 +14,7 @@ O playbook está organizado em módulos que tratam de diferentes aspectos do sis
 - Timezone configurado para Brasil (America/Sao_Paulo)
 - Sistema totalmente atualizado com últimas correções
 - UFW (Uncomplicated Firewall) habilitado e configurado
-- Ferramentas essenciais de terminal como exa (ls moderno), btop (monitor de sistema), fzf (fuzzy finder)
+- Ferramentas essenciais de terminal como exa (ls moderno), btop (monitor de sistema), fzf (fuzzy finder), Tailspin e mais
 - Suporte a Flatpak com Flathub configurado para aplicações isoladas
 
 ### Repositórios Extras
@@ -31,8 +31,9 @@ O playbook está organizado em módulos que tratam de diferentes aspectos do sis
 - Ajustes de usabilidade no LibreWolf
 
 ### Desenvolvimento
-- SDKMAN! para gerenciamento de SDKs
-- Java 23 em duas distribuições (Oracle e OpenJDK)
+- ASDF para gerenciamento de runtimes e versões
+  - Java 23 em duas distribuições (Oracle e OpenJDK)
+  - Ruby 3.2.2 e Rails 8.0.1
 - Todas as configurações necessárias no ambiente
 
 ### Virtualização e Containers
@@ -44,9 +45,12 @@ O playbook está organizado em módulos que tratam de diferentes aspectos do sis
 
 ### GNOME
 - Extensões selecionadas do GNOME Shell
-- Blur my Shell para efeitos visuais modernos
-- Dash to Dock para um dock personalizável
-- Outras extensões para produtividade
+  - Blur my Shell para efeitos visuais modernos
+  - Burn my Windows para animações
+  - Dash to Dock para um dock personalizável
+  - AppIndicator e Clipboard Indicator para produtividade
+  - Tiling Shell para gerenciamento de janelas
+  - E outras extensões úteis
 
 ## Uso
 
@@ -59,12 +63,18 @@ cd ansible-debian-desktop
 2. Execute o script de bootstrap:
 ```bash
 chmod +x bootstrap.sh
-sudo ./bootstrap.sh
+./bootstrap.sh
 ```
+
+O script de bootstrap irá:
+- Atualizar os repositórios do sistema
+- Instalar Ansible e ansible-lint
+- Executar o lint do playbook
+- Executar o playbook principal
 
 ## Licença
 
-Este projeto está licenciado sob a MIT License
+Este projeto está licenciado sob a MIT License - Copyright (c) 2025 Eduardo N.S.R.
 
 Escolhi esta licença porque, embora este seja meu ambiente pessoal, acredito que outros podem se beneficiar dele, seja usando-o como está, adaptando-o às suas necessidades ou apenas aprendendo com as soluções implementadas.
 
