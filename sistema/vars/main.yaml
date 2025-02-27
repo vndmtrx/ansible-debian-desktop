@@ -94,7 +94,7 @@ java_default_asdf: 'oracle-23'
 
 # Versão do Ruby a ser instalada
 # Usado em: sistema/tasks/03-asdf.yaml
-versao_ruby: '3.2.2'
+versao_ruby: '3.4.2'
 
 # Versão do Rails a ser instalada
 # Usado em: sistema/tasks/03-asdf.yaml
