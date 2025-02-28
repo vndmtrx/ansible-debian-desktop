@@ -81,7 +81,7 @@ aliases_bash:
 
 # Versão do ASDF
 # Usado em: sistema/tasks/03-asdf.yaml
-versao_asdf: 'v0.16.4'
+versao_asdf: 'v0.15.0'
 
 # Versões do Java a serem instaladas via ASDF
 # Usado em: sistema/tasks/03-asdf.yaml
