@@ -1,125 +1,100 @@
 ---
 # sistema/tasks/03-asdf.yaml
 
-- name: Instalação do ASDF-VM
+- name: Remove instalação anterior do ASDF se solicitado
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/bin/asdf"
+    state: absent
   become: false
-  tags: asdf
-  block:
-    - name: Instala dependências do ASDF
-      become: true
-      ansible.builtin.apt:
-        name:
-          - curl
-          - git
-          - unzip
-          - build-essential
-          - autoconf
-          - libssl-dev
-          - libncurses5-dev
-          - libreadline-dev
-          - libbz2-dev
-          - libsqlite3-dev
-          - zlib1g-dev
-          # Dependências específicas para Ruby
-          - libffi-dev
-          - libyaml-dev
-          - libgmp-dev
-          - libxml2-dev
-          - libxslt1-dev
-        state: present
+  when: asdf_instalacao_limpa | default(false) | bool
 
-    - name: Verifica se ASDF já está instalado
-      ansible.builtin.stat:
-        path: "{{ ansible_env.HOME }}/.asdf/asdf.sh"
-      register: asdf_init
+- name: Remove .tool-versions anterior do ASDF se solicitado
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.tool-versions"
+    state: absent
+  become: false
+  when: asdf_instalacao_limpa | default(false) | bool
 
-    - name: Clona repositório do ASDF
-      ansible.builtin.git:
-        repo: "https://github.com/asdf-vm/asdf.git"
-        dest: "{{ ansible_env.HOME }}/.asdf"
-        version: "{{ versao_asdf }}"
-      when: not asdf_init.stat.exists
+- name: Remove diretório de dados do ASDF se solicitado
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.asdf"
+    state: absent
+  become: false
+  when: asdf_instalacao_limpa | default(false) | bool
 
-    - name: Adiciona configuração do ASDF ao .bashrc
-      ansible.builtin.blockinfile:
-        path: "{{ ansible_env.HOME }}/.bashrc"
-        marker: "# {mark} ASDF CONFIGURATION"
-        block: |
-          # ASDF Version Manager
-          . $HOME/.asdf/asdf.sh
-          . $HOME/.asdf/completions/asdf.bash
-        state: present
-      when: not asdf_init.stat.exists
+- name: Instala dependências do ASDF
+  ansible.builtin.apt:
+    name:
+      - curl
+      - git
+      - unzip
+      - build-essential
+      - autoconf
+      - libssl-dev
+      - libncurses5-dev
+      - libreadline-dev
+      - libbz2-dev
+      - libsqlite3-dev
+      - zlib1g-dev
+    state: present
+  become: true
 
-    # Instala plugins
-    - name: Adiciona plugin do Java
-      ansible.builtin.shell: |
-        source {{ ansible_env.HOME }}/.asdf/asdf.sh
-        asdf plugin add java || true
-      args:
-        executable: /bin/bash
-      register: java_plugin
-      changed_when: java_plugin.rc == 0
+- name: Cria diretório bin no home se não existir
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/bin"
+    state: directory
+    mode: '0755'
+  become: false
 
-    - name: Adiciona plugin do Ruby
-      ansible.builtin.shell: |
-        source {{ ansible_env.HOME }}/.asdf/asdf.sh
-        asdf plugin add ruby || true
-      args:
-        executable: /bin/bash
-      register: ruby_plugin
-      changed_when: ruby_plugin.rc == 0
+- name: Define ASDF_DATA_DIR
+  ansible.builtin.set_fact:
+    asdf_data_dir: "{{ ansible_env.HOME }}/.asdf"
+  become: false
 
-    # Instala versões do Java
-    - name: Instala versões do Java via ASDF
-      ansible.builtin.shell: |
-        source {{ ansible_env.HOME }}/.asdf/asdf.sh
-        asdf install java {{ item }}
-      loop: "{{ versoes_java_asdf }}"
-      args:
-        executable: /bin/bash
-      register: java_install
-      changed_when: java_install.rc == 0 and 'is already installed' not in java_install.stdout
+- name: Verifica se ASDF já está instalado
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/bin/asdf"
+  register: asdf_binary
+  become: false
 
-    - name: Define versão global do Java
-      ansible.builtin.shell: |
-        source {{ ansible_env.HOME }}/.asdf/asdf.sh
-        asdf global java {{ java_default_asdf }}
-      args:
-        executable: /bin/bash
-      register: java_global
-      changed_when: java_global.rc == 0
+- name: Define a URL de download do ASDF
+  ansible.builtin.set_fact:
+    asdf_download_url: "https://github.com/asdf-vm/asdf/releases/download/{{ versao_asdf }}/asdf-{{ versao_asdf }}-linux-amd64.tar.gz"
+  become: false
+  when: not asdf_binary.stat.exists
 
-    # Instala Ruby por compilação
-    - name: Instala versão do Ruby via ASDF
-      ansible.builtin.shell: |
-        source {{ ansible_env.HOME }}/.asdf/asdf.sh
-        asdf install ruby {{ versao_ruby }}
-      args:
-        executable: /bin/bash
-      register: ruby_install
-      changed_when: ruby_install.rc == 0 and 'is already installed' not in ruby_install.stdout
+- name: Download do ASDF
+  ansible.builtin.get_url:
+    url: "{{ asdf_download_url }}"
+    dest: "/tmp/asdf.tar.gz"
+    mode: '0644'
+  become: false
+  when: not asdf_binary.stat.exists
 
-    - name: Define versão global do Ruby
-      ansible.builtin.shell: |
-        source {{ ansible_env.HOME }}/.asdf/asdf.sh
-        asdf global ruby {{ versao_ruby }}
-      args:
-        executable: /bin/bash
-      register: ruby_global
-      changed_when: ruby_global.rc == 0
+- name: Extrai o arquivo
+  ansible.builtin.unarchive:
+    src: "/tmp/asdf.tar.gz"
+    dest: "/tmp"
+    remote_src: true
+  become: false
+  when: not asdf_binary.stat.exists
 
-    # Instala Rails via gem
-    - name: Instala Rails via gem
-      ansible.builtin.shell: |
-        source {{ ansible_env.HOME }}/.asdf/asdf.sh
-        # Atualiza o RubyGems primeiro
-        gem update --system
-        # Instala o bundler primeiro
-        gem install bundler
-        # Instala Rails
-        gem install rails -v {{ versao_rails }}
-      args:
-        executable: /bin/bash
-      register: rails_install
-      changed_when: rails_install.rc == 0 and 'Successfully installed rails' in rails_install.stdout
+- name: Instala o binário ASDF
+  ansible.builtin.copy:
+    src: "/tmp/asdf"
+    dest: "{{ ansible_env.HOME }}/bin/asdf"
+    mode: '0755'
+    remote_src: true
+  become: false
+  when: not asdf_binary.stat.exists
+
+- name: Adiciona configuração do ASDF ao .bashrc
+  ansible.builtin.blockinfile:
+    path: "{{ ansible_env.HOME }}/.bashrc"
+    marker: "# {mark} ASDF CONFIGURATION"
+    block: |
+      # ASDF Version Manager (v0.16.x)
+      export ASDF_DATA_DIR="{{ asdf_data_dir }}"
+      export PATH="$ASDF_DATA_DIR/shims:$PATH"
+    state: present
+  become: false
