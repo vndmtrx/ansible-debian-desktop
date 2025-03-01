@@ -13,8 +13,11 @@
 - name: Importar configurações do ASDF
   ansible.builtin.import_tasks: 03-asdf.yaml
 
-- name: Importar configurações das extensões GNOME
-  ansible.builtin.import_tasks: 04-gnome-extensions.yaml
+- name: Importar configurações dos shims para ASDF
+  ansible.builtin.import_tasks: 04-asdf-shims.yaml
 
 - name: Importar configurações de virtualização
-  ansible.builtin.import_tasks: 05-vagrant-kvm-qemu.yaml
+  ansible.builtin.import_tasks: 06-vagrant-kvm-qemu.yaml
+
+- name: Importar configurações das extensões GNOME
+  ansible.builtin.import_tasks: 99-gnome-extensions.yaml
