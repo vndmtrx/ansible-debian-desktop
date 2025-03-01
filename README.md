@@ -12,13 +12,23 @@ O playbook está organizado em módulos que tratam de diferentes aspectos do sis
 
 ### Base do Sistema
 - Timezone configurado para Brasil (America/Sao_Paulo)
-- Sistema totalmente atualizado com últimas correções
-- UFW (Uncomplicated Firewall) habilitado e configurado
-- Ferramentas essenciais de terminal como exa (ls moderno), btop (monitor de sistema), fzf (fuzzy finder), Tailspin e mais
+- Sistema totalmente atualizado com últimas correções (opcional via variável `atualiza_sistema`)
+- UFW (Uncomplicated Firewall) habilitado e configurado (com interface gráfica GUFW)
+- Ferramentas essenciais de terminal como:
+  - exa (ls moderno)
+  - btop (monitor de sistema)
+  - fzf (fuzzy finder)
+  - Tailspin (visualizador de logs colorido)
+  - gdu (analisador de uso de disco)
+  - glances (monitor de recursos)
+  - mtr (traceroute interativo)
+  - neofetch (informações do sistema)
 - Suporte a Flatpak com Flathub configurado para aplicações isoladas
+  - Inclui temas GTK3 para Flatpak: Adwaita e libadwaita
+  - Utilitários como Flatseal e Warehouse para gerenciar aplicativos Flatpak
 
 ### Repositórios Extras
-- Extrepo configurado com suporte a repositórios non-free
+- Extrepo configurado com suporte a repositórios non-free e non-free-firmware
 - LibreWolf como navegador principal focado em privacidade
 - VSCodium para desenvolvimento
 - VirtualBox para virtualização
@@ -26,31 +36,51 @@ O playbook está organizado em módulos que tratam de diferentes aspectos do sis
 
 ### Configurações de Usuário
 - Tilix como emulador de terminal principal
-- Aliases úteis pré-configurados no bash
+- Aliases úteis pré-configurados no bash:
+  - Melhoria para comandos comuns (ls, ip, grep com cores)
+  - Atalhos para ferramentas frequentes (vagrant, tailspin, journalctl)
+  - Reinicialização para BIOS/UEFI com um comando
 - Limpeza automática de arquivos antigos em Downloads (mais de 30 dias)
-- Ajustes de usabilidade no LibreWolf
+- Ajustes de usabilidade no LibreWolf (suporte a touch input)
 
 ### Desenvolvimento
-- ASDF para gerenciamento de runtimes e versões
+- ASDF v0.16.4 para gerenciamento de runtimes e versões
   - Java 23 em duas distribuições (Oracle e OpenJDK)
-  - Ruby 3.2.2 e Rails 8.0.1
-- Todas as configurações necessárias no ambiente
+  - Maven 3.9.9
+  - Ruby 3.4.2 e Rails 8.0.1
+- Instalação completa com todas as dependências necessárias
+- Configuração do PATH e todas as variáveis de ambiente
 
 ### Virtualização e Containers
-- VirtualBox e KVM/QEMU para virtualização
-- Vagrant com plugins essenciais (cachier, hostmanager, libvirt)
-- Configuração automática de grupos e permissões
-- Integração com libvirt para melhor desempenho
+- VirtualBox 7.1 e KVM/QEMU para virtualização
+- Vagrant com plugins essenciais:
+  - vagrant-cachier (cache de pacotes)
+  - vagrant-hostmanager (gerenciamento automático de hosts)
+  - vagrant-libvirt (suporte a libvirt/KVM)
+- Configuração automática de grupos e permissões para libvirt e KVM
 - Interface gráfica virt-manager para gerenciamento de VMs
 
 ### GNOME
-- Extensões selecionadas do GNOME Shell
+- Extensões selecionadas do GNOME Shell:
   - Blur my Shell para efeitos visuais modernos
   - Burn my Windows para animações
   - Dash to Dock para um dock personalizável
   - AppIndicator e Clipboard Indicator para produtividade
   - Tiling Shell para gerenciamento de janelas
-  - E outras extensões úteis
+  - Caffeine para evitar que o sistema entre em suspensão
+  - Custom Hot Corners Extended para ações nos cantos da tela
+  - No Overview para iniciar diretamente na área de trabalho
+  - Wallpaper Switcher para alternar papéis de parede
+  - Window Is Ready para remover notificações de janelas
+
+## Aplicações Incluídas
+
+### Aplicações do Sistema
+- Navegadores: LibreWolf, Chromium
+- Ferramentas gráficas: GIMP, Inkscape (via Flatpak)
+- Entretenimento: Stremio (via Flatpak)
+- Desenvolvimento: VSCodium
+- Redes: Wireshark (via Flatpak)
 
 ## Uso
 
@@ -71,6 +101,19 @@ O script de bootstrap irá:
 - Instalar Ansible e ansible-lint
 - Executar o lint do playbook
 - Executar o playbook principal
+
+## Personalização
+
+O playbook pode ser personalizado através das variáveis definidas em `sistema/vars/main.yaml`. Algumas variáveis importantes:
+
+- `atualiza_sistema`: Controla se o sistema será atualizado (padrão: false)
+- `pacotes_sistema`: Lista de pacotes essenciais do sistema
+- `apps_terminal`: Lista de aplicações de terminal a serem instaladas
+- `apps_gui`: Lista de aplicações gráficas a serem instaladas
+- `apps_flatpak`: Lista de aplicações Flatpak a serem instaladas
+- `repos_extrepo`: Lista de repositórios extrepo a serem habilitados
+- `versoes_java_asdf`: Versões do Java a serem instaladas
+- `extensoes_gnome`: Lista de extensões GNOME a serem instaladas
 
 ## Licença
 
