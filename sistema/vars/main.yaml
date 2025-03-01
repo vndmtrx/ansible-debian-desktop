@@ -4,7 +4,7 @@
 
 # Controla se o sistema será atualizado
 # Usado em: sistema/tasks/00-base.yaml
-atualiza_sistema: true
+atualiza_sistema: false
 
 # Pacotes essenciais do sistema
 # Usado em: sistema/tasks/00-base.yaml
@@ -81,24 +81,29 @@ aliases_bash:
 
 # Versão do ASDF
 # Usado em: sistema/tasks/03-asdf.yaml
-versao_asdf: 'v0.15.0'
+versao_asdf: 'v0.16.4'
+asdf_instalacao_limpa: true
 
 # Versões do Java a serem instaladas via ASDF
-# Usado em: sistema/tasks/03-asdf.yaml
+# Usado em: sistema/tasks/04-asdf-shims.yaml
 versoes_java_asdf:
   - 'openjdk-23'
   - 'oracle-23'
 
 # Versão do Java a ser definida como padrão
-# Usado em: sistema/tasks/03-asdf.yaml
+# Usado em: sistema/tasks/04-asdf-shims.yaml
 java_default_asdf: 'oracle-23'
 
+# Versão do Maven a ser instalada
+# Usado em: sistema/tasks/04-asdf-shims.yaml
+versao_maven: '3.9.9'
+
 # Versão do Ruby a ser instalada
-# Usado em: sistema/tasks/03-asdf.yaml
+# Usado em: sistema/tasks/04-asdf-shims.yaml
 versao_ruby: '3.4.2'
 
 # Versão do Rails a ser instalada
-# Usado em: sistema/tasks/03-asdf.yaml
+# Usado em: sistema/tasks/04-asdf-shims.yaml
 versao_rails: '8.0.1'
 
 extensoes_gnome:
