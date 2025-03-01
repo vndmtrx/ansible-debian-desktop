@@ -1,0 +1,13 @@
+---
+# sistema/handlers/main.yaml
+
+# Handlers para ASDF reshim
+- name: Reshim
+  ansible.builtin.shell: |
+    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
+    export PATH="$ASDF_DATA_DIR/shims:$HOME/bin:$PATH"
+    asdf reshim
+  args:
+    executable: /bin/bash
+  become: false
+  changed_when: true
