@@ -127,7 +127,7 @@ pacotes_virt:
   - virt-manager
 
 # Grupos necessários para o usuário
-# Usado em: kvm/tasks/main.yaml
+# Usado em: sistema/tasks/05-vagrant-kvm-qemu.yaml
 grupos_virt:
   - libvirt
   - kvm
@@ -135,7 +135,7 @@ grupos_virt:
   - docker
 
 # Serviços que devem estar ativos
-# Usado em: kvm/tasks/main.yaml
+# Usado em: sistema/tasks/05-vagrant-kvm-qemu.yaml
 servicos_virt:
   - libvirtd.service
   - docker
