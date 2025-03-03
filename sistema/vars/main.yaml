@@ -111,19 +111,6 @@ versao_ruby: '3.4.2'
 # Usado em: sistema/tasks/04-asdf-shims.yaml
 versao_rails: '8.0.1'
 
-extensoes_gnome:
-  - { id: 615,  nome: "AppIndicator and KStatusNotifierItem Support" }
-  - { id: 3193, nome: "Blur my Shell" }
-  - { id: 4679, nome: "Burn my Windows" }
-  - { id: 517,  nome: "Caffeine" }
-  - { id: 4167, nome: "Custom Hot Corners - Extended" }
-  - { id: 307,  nome: "Dash to Dock" }
-  - { id: 779,  nome: "Clipboard Indicator" }
-  - { id: 4099, nome: "No Overview" }
-  - { id: 7065, nome: "Tiling Shell" }
-  - { id: 4812, nome: "Wallpaper Switcher" }
-  - { id: 1007, nome: "Window Is Ready - Notification Remover" }
-
 # Pacotes necessários para virtualização
 # Usado em: sistema/tasks/05-vagrant-kvm-qemu.yaml
 pacotes_virt:
@@ -152,3 +139,18 @@ grupos_virt:
 servicos_virt:
   - libvirtd.service
   - docker
+
+# Extensões a serem instaladas
+# Usado em: sistema/tasks/99-gnome-extensions.yaml
+extensoes_gnome:
+  - { id: 615,  nome: "AppIndicator and KStatusNotifierItem Support" }
+  - { id: 3193, nome: "Blur my Shell" }
+  - { id: 4679, nome: "Burn my Windows" }
+  - { id: 517,  nome: "Caffeine" }
+  - { id: 4167, nome: "Custom Hot Corners - Extended" }
+  - { id: 307,  nome: "Dash to Dock" }
+  - { id: 779,  nome: "Clipboard Indicator" }
+  - { id: 4099, nome: "No Overview" }
+  - { id: 7065, nome: "Tiling Shell" }
+  - { id: 4812, nome: "Wallpaper Switcher" }
+  - { id: 1007, nome: "Window Is Ready - Notification Remover" }
