@@ -57,6 +57,7 @@ repos_extrepo:
   - waydroid
   - virtualbox
   - vscodium
+  - docker-ce
 
 # Pacotes a serem instalados dos repositórios Extrepo
 # Usado em: sistema/tasks/01-extrepo.yaml
@@ -65,6 +66,10 @@ pacotes_extrepo:
   - waydroid
   - virtualbox-7.1
   - codium
+  - docker-ce
+  - docker-ce-cli
+  - docker-buildx-plugin
+  - docker-compose-plugin
 
 # Aliases para o Bash
 # Usado em: sistema/tasks/02-usuario.yaml
@@ -140,8 +145,10 @@ grupos_kvm:
   - libvirt
   - kvm
   - libvirt-qemu
+  - docker
 
 # Serviços que devem estar ativos
 # Usado em: kvm/tasks/main.yaml
 servicos_kvm:
   - libvirtd.service
+  - docker
