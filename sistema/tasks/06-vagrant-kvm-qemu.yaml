@@ -13,7 +13,7 @@
     name: "{{ ansible_env.USER }}"
     groups: "{{ item }}"
     append: true
-  loop: "{{ grupos_kvm }}"
+  loop: "{{ grupos_virt }}"
   become: true
 
 - name: Configura serviço libvirtd
@@ -21,5 +21,5 @@
     name: "{{ item }}"
     state: started
     enabled: true
-  loop: "{{ servicos_kvm }}"
+  loop: "{{ servicos_virt }}"
   become: true

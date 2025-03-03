@@ -141,7 +141,7 @@ pacotes_virt:
 
 # Grupos necessários para o usuário
 # Usado em: kvm/tasks/main.yaml
-grupos_kvm:
+grupos_virt:
   - libvirt
   - kvm
   - libvirt-qemu
@@ -149,6 +149,6 @@ grupos_kvm:
 
 # Serviços que devem estar ativos
 # Usado em: kvm/tasks/main.yaml
-servicos_kvm:
+servicos_virt:
   - libvirtd.service
   - docker
