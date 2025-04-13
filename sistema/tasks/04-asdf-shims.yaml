@@ -56,6 +56,28 @@
   changed_when: ruby_plugin.rc == 0 and 'already added' not in ruby_plugin.stdout
   become: false
 
+- name: Adiciona plugin do Erlang
+  ansible.builtin.shell: |
+    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
+    export PATH="$HOME/bin:$PATH"
+    asdf plugin add erlang || true
+  args:
+    executable: /bin/bash
+  register: erlang_plugin
+  changed_when: erlang_plugin.rc == 0 and 'already added' not in erlang_plugin.stdout
+  become: false
+
+- name: Adiciona plugin do Elixir
+  ansible.builtin.shell: |
+    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
+    export PATH="$HOME/bin:$PATH"
+    asdf plugin add elixir || true
+  args:
+    executable: /bin/bash
+  register: elixir_plugin
+  changed_when: elixir_plugin.rc == 0 and 'already added' not in elixir_plugin.stdout
+  become: false
+
 # Instala versões do Java
 - name: Instala versões do Java via ASDF
   ansible.builtin.shell: |
@@ -143,6 +165,52 @@
   changed_when: rails_install.rc == 0 and 'Successfully installed rails' in rails_install.stdout
   become: false
   notify: Reshim
+
+# Instala Erlang
+- name: Instala versão do Erlang via ASDF
+  ansible.builtin.shell: |
+    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
+    export PATH="$ASDF_DATA_DIR/shims:$HOME/bin:$PATH"
+    asdf install erlang {{ versao_erlang }}
+  args:
+    executable: /bin/bash
+  register: erlang_install
+  changed_when: erlang_install.rc == 0 and 'is already installed' not in erlang_install.stdout
+  become: false
+
+- name: Define versão global do Erlang
+  ansible.builtin.shell: |
+    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
+    export PATH="$ASDF_DATA_DIR/shims:$HOME/bin:$PATH"
+    asdf set --home erlang {{ versao_erlang }}
+  args:
+    executable: /bin/bash
+  register: erlang_global
+  changed_when: erlang_global.rc == 0
+  become: false
+
+# Instala Elixir
+- name: Instala versão do Elixir via ASDF
+  ansible.builtin.shell: |
+    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
+    export PATH="$ASDF_DATA_DIR/shims:$HOME/bin:$PATH"
+    asdf install elixir {{ versao_elixir }}
+  args:
+    executable: /bin/bash
+  register: elixir_install
+  changed_when: elixir_install.rc == 0 and 'is already installed' not in elixir_install.stdout
+  become: false
+
+- name: Define versão global do Elixir
+  ansible.builtin.shell: |
+    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
+    export PATH="$ASDF_DATA_DIR/shims:$HOME/bin:$PATH"
+    asdf set --home elixir {{ versao_elixir }}
+  args:
+    executable: /bin/bash
+  register: elixir_global
+  changed_when: elixir_global.rc == 0
+  become: false
 
 # Acionamento dos handlers após as instalações
 - name: Handlers para reshim

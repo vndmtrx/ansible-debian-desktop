@@ -111,6 +111,14 @@ versao_ruby: '3.4.2'
 # Usado em: sistema/tasks/04-asdf-shims.yaml
 versao_rails: '8.0.1'
 
+# Versão do Erlang a ser instalada
+# Usado em: sistema/tasks/04-asdf-shims.yaml
+versao_erlang: '27.3.2'
+
+# Versão do Elixir a ser instalada
+# Usado em: sistema/tasks/04-asdf-shims.yaml
+versao_elixir: '1.18.3-otp-27'
+
 # Pacotes necessários para virtualização
 # Usado em: sistema/tasks/05-vagrant-kvm-qemu.yaml
 pacotes_virt:
