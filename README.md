@@ -48,6 +48,7 @@ O playbook está organizado em módulos que tratam de diferentes aspectos do sis
   - Java 23 em duas distribuições (Oracle e OpenJDK)
   - Maven 3.9.9
   - Ruby 3.4.2 e Rails 8.0.1
+  - Erlang 27.3.2 e Elixir 1.18.3-otp-27
 - Instalação completa com todas as dependências necessárias
 - Configuração do PATH e todas as variáveis de ambiente
 
