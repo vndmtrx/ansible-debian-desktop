@@ -148,6 +148,11 @@ servicos_virt:
   - libvirtd.service
   - docker
 
+# Versões dos pacotes do LogSeq
+# Usado em: sistema/tasks/07-logseq.yaml
+logseq_bin: https://github.com/logseq/logseq/releases/download/0.10.12/Logseq-linux-x64-0.10.12.AppImage
+logseq_ico: https://raw.githubusercontent.com/logseq/logseq/master/resources/icons/logseq.png
+
 # Extensões a serem instaladas
 # Usado em: sistema/tasks/99-gnome-extensions.yaml
 extensoes_gnome:

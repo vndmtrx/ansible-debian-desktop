@@ -19,5 +19,8 @@
 - name: Importar configurações de virtualização
   ansible.builtin.import_tasks: 06-vagrant-kvm-qemu.yaml
 
+- name: Instalar LogSeq
+  ansible.builtin.import_tasks: 07-logseq.yaml
+
 - name: Importar configurações das extensões GNOME
   ansible.builtin.import_tasks: 99-gnome-extensions.yaml

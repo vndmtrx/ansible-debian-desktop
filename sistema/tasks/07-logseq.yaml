@@ -1,0 +1,41 @@
+---
+# sistema/tasks/07-logseq.yaml
+
+- name: Garante que ~/bin existe
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/bin"
+    state: directory
+    mode: '0755'
+
+- name: Garante que ~/.local/share/icons existe
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.local/share/icons"
+    state: directory
+    mode: '0755'
+
+- name: Baixa Logseq AppImage
+  ansible.builtin.get_url:
+    url: "{{ logseq_bin }}"
+    dest: "{{ ansible_env.HOME }}/bin/logseq.AppImage"
+    mode: '0755'
+
+- name: Baixa ícone do Logseq
+  ansible.builtin.get_url:
+    url: "{{ logseq_ico }}"
+    dest: "{{ ansible_env.HOME }}/.local/share/icons/logseq.png"
+    mode: '0644'
+
+- name: Cria atalho do Logseq no menu
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/.local/share/applications/logseq.desktop"
+    content: |
+      [Desktop Entry]
+      Name=Logseq
+      Comment=Logseq – Graph-based knowledge management
+      Exec={{ ansible_env.HOME }}/bin/logseq.AppImage
+      Icon={{ ansible_env.HOME }}/.local/share/icons/logseq.png
+      Type=Application
+      Categories=Utility;TextEditor;NoteTaking;
+      StartupNotify=true
+      Terminal=false
+    mode: '0644'
