@@ -54,8 +54,6 @@ apps_flatpak:
 # Usado em: sistema/tasks/01-extrepo.yaml
 repos_extrepo:
   - librewolf
-  - waydroid
-  - virtualbox
   - vscodium
   - docker-ce
 
@@ -63,8 +61,6 @@ repos_extrepo:
 # Usado em: sistema/tasks/01-extrepo.yaml
 pacotes_extrepo:
   - librewolf
-  - waydroid
-  - virtualbox-7.1
   - codium
   - docker-ce
   - docker-ce-cli
@@ -74,7 +70,7 @@ pacotes_extrepo:
 # Aliases para o Bash
 # Usado em: sistema/tasks/02-usuario.yaml
 aliases_bash:
-  - 'ip="ip --color"'
+  - 'ip="ip --color=auto"'
   - 'ls="exa --color=auto"'
   - 'grep="grep --color=auto"'
   - 'ts="tailspin"'
@@ -86,8 +82,8 @@ aliases_bash:
 
 # Versão do ASDF
 # Usado em: sistema/tasks/03-asdf.yaml
-versao_asdf: 'v0.16.4'
-asdf_instalacao_limpa: true
+versao_asdf: 'v0.18.0'
+asdf_instalacao_limpa: false
 
 # Versões do Java a serem instaladas via ASDF
 # Usado em: sistema/tasks/04-asdf-shims.yaml
@@ -102,14 +98,6 @@ java_default_asdf: 'oracle-23'
 # Versão do Maven a ser instalada
 # Usado em: sistema/tasks/04-asdf-shims.yaml
 versao_maven: '3.9.9'
-
-# Versão do Ruby a ser instalada
-# Usado em: sistema/tasks/04-asdf-shims.yaml
-versao_ruby: '3.4.2'
-
-# Versão do Rails a ser instalada
-# Usado em: sistema/tasks/04-asdf-shims.yaml
-versao_rails: '8.0.1'
 
 # Versão do Erlang a ser instalada
 # Usado em: sistema/tasks/04-asdf-shims.yaml
@@ -167,3 +155,4 @@ extensoes_gnome:
   - { id: 7065, nome: "Tiling Shell" }
   - { id: 4812, nome: "Wallpaper Switcher" }
   - { id: 1007, nome: "Window Is Ready - Notification Remover" }
+  - { id: 3433, nome: "Fly-Pie" }
