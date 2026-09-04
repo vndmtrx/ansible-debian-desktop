@@ -6,6 +6,17 @@
     name: America/Sao_Paulo
   become: true
 
+- name: Verifica status do NTP
+  ansible.builtin.command: timedatectl show --property=NTP --value
+  register: ntp_status
+  changed_when: false
+  become: true
+
+- name: Habilita sincronização de hora via NTP
+  ansible.builtin.command: timedatectl set-ntp true
+  become: true
+  when: ntp_status.stdout != 'yes'
+
 - name: Atualiza cache do apt
   ansible.builtin.apt:
     update_cache: true
@@ -22,9 +33,8 @@
 
 - name: Instala aplicações de sistema
   ansible.builtin.apt:
-    name: "{{ item }}"
+    name: "{{ pacotes_sistema }}"
     state: present
-  loop: "{{ pacotes_sistema }}"
   become: true
 
 - name: Habilita serviços de sistema
@@ -35,18 +45,22 @@
   loop: "{{ servicos_sistema }}"
   become: true
 
+- name: Permite conexões SSH no firewall
+  community.general.ufw:
+    rule: allow
+    name: OpenSSH
+  become: true
+
 - name: Instala aplicações relacionados a terminal
   ansible.builtin.apt:
-    name: "{{ item }}"
+    name: "{{ apps_terminal }}"
     state: present
-  loop: "{{ apps_terminal }}"
   become: true
 
 - name: Instala aplicações de uso gráfico
-  ansible.builtin.package:
-    name: "{{ item }}"
+  ansible.builtin.apt:
+    name: "{{ apps_gui }}"
     state: present
-  loop: "{{ apps_gui }}"
   become: true
 
 - name: Instala repositório Flathub
@@ -63,55 +77,3 @@
     method: system
   loop: "{{ apps_flatpak }}"
   become: true
-
-- name: Instalação do Tailspin
-  block:
-    - name: Verifica se Tailspin está instalado
-      ansible.builtin.command: which tailspin
-      register: tailspin_check
-      failed_when: false
-      changed_when: false
-
-    - name: Cria diretório temporário para download
-      ansible.builtin.tempfile:
-        state: directory
-        suffix: tailspin
-      register: temp_dir
-      when: tailspin_check.rc != 0
-
-    - name: Download do Tailspin
-      ansible.builtin.get_url:
-        url: https://github.com/bensadeh/tailspin/releases/latest/download/tailspin-x86_64-unknown-linux-musl.tar.gz
-        dest: "{{ temp_dir.path }}/tailspin.tar.gz"
-        mode: '0644'
-      when: tailspin_check.rc != 0
-
-    - name: Extrai o arquivo
-      ansible.builtin.unarchive:
-        src: "{{ temp_dir.path }}/tailspin.tar.gz"
-        dest: "{{ temp_dir.path }}"
-        remote_src: true
-      when: tailspin_check.rc != 0
-
-    - name: Instala o binário Tailspin
-      become: true
-      ansible.builtin.copy:
-        src: "{{ temp_dir.path }}/tspin"
-        dest: /usr/local/bin/tspin
-        mode: '0755'
-        remote_src: true
-      when: tailspin_check.rc != 0
-
-    - name: Cria link simbólico para tailspin
-      become: true
-      ansible.builtin.file:
-        src: /usr/local/bin/tspin
-        dest: /usr/local/bin/tailspin
-        state: link
-      when: tailspin_check.rc != 0
-
-    - name: Limpa diretório temporário
-      ansible.builtin.file:
-        path: "{{ temp_dir.path }}"
-        state: absent
-      when: tailspin_check.rc != 0
