@@ -4,7 +4,7 @@
 - name: Ajusta o LibreWolf para usar o touch
   ansible.builtin.lineinfile:
     path: /etc/security/pam_env.conf
-    regexp: '^MOZ_USE_XINPUT2 DEFAULT=1$'
+    regexp: '^MOZ_USE_XINPUT2\b'
     line: MOZ_USE_XINPUT2 DEFAULT=1
   become: true
 
@@ -26,7 +26,35 @@
     hour: "*"
     user: "{{ ansible_env.USER }}"
     job: 'find "$HOME/Downloads" -type f -mtime +30 -exec gio trash {} \; 2>/dev/null || true'
-    # Equivalente a: 0 * * * * find "$HOME/Downloads" -type f -mtime +30 -exec gio trash {} \; 2>/dev/null || true
+  become: false
+
+- name: Garante diretórios de trabalho do usuário
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop: "{{ diretorios_usuario }}"
+  become: false
+
+- name: Cria comando utilitário para backup de configurações das extensões e GNOME
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/.local/bin/salvar-extensoes"
+    content: |
+      #!/usr/bin/env bash
+      # Salva as configurações das extensões e do desktop GNOME em ~/du/conf
+      set -euo pipefail
+
+      DEST_DIR="$HOME/du/conf"
+      TIMESTAMP=$(date +%Y%m%d%H%M%S)
+
+      mkdir -p "$DEST_DIR"
+      dconf dump /org/gnome/shell/extensions/ > "$DEST_DIR/extensoes_${TIMESTAMP}.dconf"
+      dconf dump / > "$DEST_DIR/gnome_desktop_${TIMESTAMP}.dconf"
+
+      echo "✅ Configurações salvas com sucesso em $DEST_DIR:"
+      echo "   📄 Extensões: extensoes_${TIMESTAMP}.dconf"
+      echo "   📄 Desktop Completo: gnome_desktop_${TIMESTAMP}.dconf"
+    mode: '0755'
   become: false
 
 - name: Configura aliases para Bash
@@ -39,22 +67,16 @@
       changed_when: false
       failed_when: false
 
-    - name: Cria arquivo .bash_aliases
-      ansible.builtin.file:
-        path: "{{ ansible_env.HOME }}/.bash_aliases"
-        state: touch
-        mode: '0600'
-      when: bashrc_check.rc == 0
-
     - name: Adiciona aliases
       ansible.builtin.lineinfile:
         path: "{{ ansible_env.HOME }}/.bash_aliases"
-        regexp: '^alias {{ item | regex_escape }}='
+        regexp: '^alias {{ (item.split("=")[0]) | regex_escape }}='
         line: 'alias {{ item }}'
         state: present
+        create: true
+        mode: '0644'
       loop: "{{ aliases_bash }}"
       when: bashrc_check.rc == 0
-  # Falha se o .bashrc não tiver a configuração necessária
   rescue:
     - name: Falha se .bashrc não estiver configurado corretamente
       ansible.builtin.fail:
