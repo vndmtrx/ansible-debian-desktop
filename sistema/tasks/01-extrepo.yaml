@@ -20,7 +20,7 @@
           ---
           url: https://extrepo-team.pages.debian.net/extrepo-data
           dist: debian
-          version: bookworm
+          version: {{ ansible_distribution_release }}
           enabled_policies:
           - main
           - contrib
@@ -54,11 +54,9 @@
     - name: Atualiza cache do apt após adicionar repositórios
       ansible.builtin.apt:
         update_cache: true
-      when: extrepo_result is succeeded
+      when: extrepo_result.changed | default(false)
 
     - name: Instala pacotes dos repositórios habilitados
       ansible.builtin.apt:
-        name: "{{ item }}"
+        name: "{{ pacotes_extrepo }}"
         state: present
-      loop: "{{ pacotes_extrepo }}"
-      when: extrepo_result is succeeded
