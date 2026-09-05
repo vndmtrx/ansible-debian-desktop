@@ -3,7 +3,7 @@
 
 - name: Remove instalação anterior do ASDF se solicitado
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/bin/asdf"
+    path: "{{ ansible_env.HOME }}/.local/bin/asdf"
     state: absent
   become: false
   when: asdf_instalacao_limpa | default(false) | bool
@@ -31,7 +31,7 @@
       - build-essential
       - autoconf
       - libssl-dev
-      - libncurses5-dev
+      - libncurses-dev
       - libreadline-dev
       - libbz2-dev
       - libsqlite3-dev
@@ -39,9 +39,9 @@
     state: present
   become: true
 
-- name: Cria diretório bin no home se não existir
+- name: Cria diretório .local/bin no home se não existir
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/bin"
+    path: "{{ ansible_env.HOME }}/.local/bin"
     state: directory
     mode: '0755'
   become: false
@@ -53,7 +53,7 @@
 
 - name: Verifica se ASDF já está instalado
   ansible.builtin.stat:
-    path: "{{ ansible_env.HOME }}/bin/asdf"
+    path: "{{ ansible_env.HOME }}/.local/bin/asdf"
   register: asdf_binary
   become: false
 
@@ -82,9 +82,19 @@
 - name: Instala o binário ASDF
   ansible.builtin.copy:
     src: "/tmp/asdf"
-    dest: "{{ ansible_env.HOME }}/bin/asdf"
+    dest: "{{ ansible_env.HOME }}/.local/bin/asdf"
     mode: '0755'
     remote_src: true
+  become: false
+  when: not asdf_binary.stat.exists
+
+- name: Remove arquivos temporários da instalação do ASDF
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/asdf.tar.gz
+    - /tmp/asdf
   become: false
   when: not asdf_binary.stat.exists
 
@@ -93,7 +103,7 @@
     path: "{{ ansible_env.HOME }}/.bashrc"
     marker: "# {mark} ASDF CONFIGURATION"
     block: |
-      # ASDF Version Manager (v0.16.x)
+      # ASDF Version Manager (v0.20+)
       export ASDF_DATA_DIR="{{ asdf_data_dir }}"
       export PATH="$ASDF_DATA_DIR/shims:$PATH"
     state: present
