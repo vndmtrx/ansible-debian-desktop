@@ -1,19 +1,19 @@
 ---
 # sistema/tasks/04-asdf-shims.yaml
 
-# Dependências específicas para os plugins
-- name: Instala dependências dos plugins do ASDF
+# Dependências específicas para compilação do Erlang e execução do Elixir
+- name: Instala dependências dos plugins do ASDF (Erlang e Elixir)
   ansible.builtin.apt:
     name:
-      # Dependências específicas para Ruby
-      - libffi-dev
-      - libyaml-dev
-      - libgmp-dev
-      - libxml2-dev
-      - libxslt1-dev
-      # Dependências para NodeJS
-      - dirmngr
-      - gpg
+      - build-essential
+      - autoconf
+      - libncurses-dev
+      - libssl-dev
+      - zlib1g-dev
+      - libwxgtk3.2-dev
+      - libgl1-mesa-dev
+      - libglu1-mesa-dev
+      - libpng-dev
     state: present
   become: true
 
@@ -22,144 +22,95 @@
     asdf_data_dir: "{{ ansible_env.HOME }}/.asdf"
   become: false
 
-# Instala plugins
-- name: Adiciona plugin do Java
-  ansible.builtin.shell: |
-    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
-    export PATH="$HOME/bin:$PATH"
-    asdf plugin add java || true
-  args:
-    executable: /bin/bash
-  register: java_plugin
-  changed_when: java_plugin.rc == 0 and 'already added' not in java_plugin.stdout
-  become: false
-
-- name: Adiciona plugin do Maven
-  ansible.builtin.shell: |
-    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
-    export PATH="$HOME/bin:$PATH"
-    asdf plugin add maven || true
-  args:
-    executable: /bin/bash
-  register: maven_plugin
-  changed_when: maven_plugin.rc == 0 and 'already added' not in maven_plugin.stdout
+# Verificação e instalação dos plugins
+- name: Verifica se o plugin Erlang do ASDF está instalado
+  ansible.builtin.stat:
+    path: "{{ asdf_data_dir }}/plugins/erlang"
+  register: asdf_erlang_plugin_stat
   become: false
 
 - name: Adiciona plugin do Erlang
   ansible.builtin.shell: |
     export ASDF_DATA_DIR="{{ asdf_data_dir }}"
-    export PATH="$HOME/bin:$PATH"
-    asdf plugin add erlang || true
+    export PATH="$ASDF_DATA_DIR/shims:$HOME/.local/bin:$PATH"
+    asdf plugin add erlang
   args:
     executable: /bin/bash
-  register: erlang_plugin
-  changed_when: erlang_plugin.rc == 0 and 'already added' not in erlang_plugin.stdout
+  when: not asdf_erlang_plugin_stat.stat.exists
+  become: false
+
+- name: Verifica se o plugin Elixir do ASDF está instalado
+  ansible.builtin.stat:
+    path: "{{ asdf_data_dir }}/plugins/elixir"
+  register: asdf_elixir_plugin_stat
   become: false
 
 - name: Adiciona plugin do Elixir
   ansible.builtin.shell: |
     export ASDF_DATA_DIR="{{ asdf_data_dir }}"
-    export PATH="$HOME/bin:$PATH"
-    asdf plugin add elixir || true
+    export PATH="$ASDF_DATA_DIR/shims:$HOME/.local/bin:$PATH"
+    asdf plugin add elixir
   args:
     executable: /bin/bash
-  register: elixir_plugin
-  changed_when: elixir_plugin.rc == 0 and 'already added' not in elixir_plugin.stdout
+  when: not asdf_elixir_plugin_stat.stat.exists
   become: false
 
-# Instala versões do Java
-- name: Instala versões do Java via ASDF
-  ansible.builtin.shell: |
-    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
-    export PATH="$ASDF_DATA_DIR/shims:$HOME/bin:$PATH"
-    asdf install java {{ item }}
-  loop: "{{ versoes_java_asdf }}"
-  args:
-    executable: /bin/bash
-  register: java_install
-  changed_when: java_install.rc == 0 and 'is already installed' not in java_install.stdout
+# Verificação e instalação do Erlang
+- name: Verifica se a versão do Erlang já está compilada
+  ansible.builtin.stat:
+    path: "{{ asdf_data_dir }}/installs/erlang/{{ versao_erlang }}"
+  register: asdf_erlang_version_stat
   become: false
 
-- name: Define versão do Java
-  ansible.builtin.shell: |
-    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
-    export PATH="$ASDF_DATA_DIR/shims:$HOME/bin:$PATH"
-    asdf set --home java {{ java_default_asdf }}
-  args:
-    executable: /bin/bash
-  register: java_global
-  changed_when: java_global.rc == 0
-  become: false
-
-# Instala Maven
-- name: Instala versão do Maven via ASDF
-  ansible.builtin.shell: |
-    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
-    export PATH="$ASDF_DATA_DIR/shims:$HOME/bin:$PATH"
-    asdf install maven {{ versao_maven }}
-  args:
-    executable: /bin/bash
-  register: maven_install
-  changed_when: maven_install.rc == 0 and 'is already installed' not in maven_install.stdout
-  become: false
-
-- name: Define versão do Maven
-  ansible.builtin.shell: |
-    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
-    export PATH="$ASDF_DATA_DIR/shims:$HOME/bin:$PATH"
-    asdf set --home maven {{ versao_maven }}
-  args:
-    executable: /bin/bash
-  register: maven_global
-  changed_when: maven_global.rc == 0
-  become: false
-
-# Instala Erlang
 - name: Instala versão do Erlang via ASDF
   ansible.builtin.shell: |
     export ASDF_DATA_DIR="{{ asdf_data_dir }}"
-    export PATH="$ASDF_DATA_DIR/shims:$HOME/bin:$PATH"
+    export PATH="$ASDF_DATA_DIR/shims:$HOME/.local/bin:$PATH"
     asdf install erlang {{ versao_erlang }}
   args:
     executable: /bin/bash
-  register: erlang_install
-  changed_when: erlang_install.rc == 0 and 'is already installed' not in erlang_install.stdout
+  when: not asdf_erlang_version_stat.stat.exists
+  notify: Reshim
   become: false
 
-- name: Define versão global do Erlang
-  ansible.builtin.shell: |
-    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
-    export PATH="$ASDF_DATA_DIR/shims:$HOME/bin:$PATH"
-    asdf set --home erlang {{ versao_erlang }}
-  args:
-    executable: /bin/bash
-  register: erlang_global
-  changed_when: erlang_global.rc == 0
+# Verificação e instalação do Elixir
+- name: Verifica se a versão do Elixir já está instalada
+  ansible.builtin.stat:
+    path: "{{ asdf_data_dir }}/installs/elixir/{{ versao_elixir }}"
+  register: asdf_elixir_version_stat
   become: false
 
-# Instala Elixir
 - name: Instala versão do Elixir via ASDF
   ansible.builtin.shell: |
     export ASDF_DATA_DIR="{{ asdf_data_dir }}"
-    export PATH="$ASDF_DATA_DIR/shims:$HOME/bin:$PATH"
+    export PATH="$ASDF_DATA_DIR/shims:$HOME/.local/bin:$PATH"
     asdf install elixir {{ versao_elixir }}
   args:
     executable: /bin/bash
-  register: elixir_install
-  changed_when: elixir_install.rc == 0 and 'is already installed' not in elixir_install.stdout
+  when: not asdf_elixir_version_stat.stat.exists
+  notify: Reshim
   become: false
 
-- name: Define versão global do Elixir
-  ansible.builtin.shell: |
-    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
-    export PATH="$ASDF_DATA_DIR/shims:$HOME/bin:$PATH"
-    asdf set --home elixir {{ versao_elixir }}
-  args:
-    executable: /bin/bash
-  register: elixir_global
-  changed_when: elixir_global.rc == 0
+# Configuração de versões globais via .tool-versions (100% idempotente)
+- name: Define versão global do Erlang em .tool-versions
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_env.HOME }}/.tool-versions"
+    regexp: '^erlang\s+'
+    line: "erlang {{ versao_erlang }}"
+    create: true
+    mode: '0644'
+  notify: Reshim
   become: false
 
-# Acionamento dos handlers após as instalações
-- name: Handlers para reshim
+- name: Define versão global do Elixir em .tool-versions
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_env.HOME }}/.tool-versions"
+    regexp: '^elixir\s+'
+    line: "elixir {{ versao_elixir }}"
+    create: true
+    mode: '0644'
+  notify: Reshim
+  become: false
+
+- name: Executa handlers pendentes
   ansible.builtin.meta: flush_handlers

@@ -5,7 +5,7 @@
 - name: Reshim
   ansible.builtin.shell: |
     export ASDF_DATA_DIR="{{ asdf_data_dir }}"
-    export PATH="$ASDF_DATA_DIR/shims:$HOME/bin:$PATH"
+    export PATH="$ASDF_DATA_DIR/shims:$HOME/.local/bin:$PATH"
     asdf reshim
   args:
     executable: /bin/bash
