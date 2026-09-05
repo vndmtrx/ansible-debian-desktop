@@ -1,0 +1,35 @@
+---
+# sistema/tasks/06-virtualizacao-containers.yaml
+
+- name: Instala pacotes de virtualização e containers
+  ansible.builtin.apt:
+    name: "{{ pacotes_virt }}"
+    state: present
+  become: true
+
+- name: Adiciona usuário aos grupos de virtualização e docker
+  ansible.builtin.user:
+    name: "{{ ansible_env.USER }}"
+    groups: "{{ grupos_virt }}"
+    append: true
+  become: true
+
+- name: Configura serviços de virtualização e docker
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop: "{{ servicos_virt }}"
+  become: true
+
+- name: Verifica plugins do Vagrant instalados
+  ansible.builtin.command: vagrant plugin list
+  register: vagrant_plugins_installed
+  changed_when: false
+  become: false
+
+- name: Instala plugins do Vagrant
+  ansible.builtin.command: "vagrant plugin install {{ item }}"
+  loop: "{{ plugins_vagrant }}"
+  when: item not in vagrant_plugins_installed.stdout
+  become: false
