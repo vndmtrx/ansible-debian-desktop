@@ -1,0 +1,59 @@
+---
+# sistema/tasks/05-sdkman.yaml
+
+- name: Instala dependências do SDKMAN
+  ansible.builtin.apt:
+    name:
+      - curl
+      - zip
+      - unzip
+    state: present
+  become: true
+
+- name: Verifica se o SDKMAN já está instalado
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/.sdkman/bin/sdkman-init.sh"
+  register: sdkman_init
+  become: false
+
+- name: Download e instalação do SDKMAN
+  ansible.builtin.shell: |
+    curl -s "https://get.sdkman.io" | bash
+  args:
+    executable: /bin/bash
+  when: not sdkman_init.stat.exists
+  become: false
+
+- name: Verifica se a versão do Java já está instalada no SDKMAN
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/.sdkman/candidates/java/{{ versao_java }}"
+  register: java_sdk_stat
+  become: false
+
+- name: Instala e define como padrão o Java via SDKMAN
+  ansible.builtin.shell: |
+    export SDKMAN_DIR="{{ ansible_env.HOME }}/.sdkman"
+    [[ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]] && source "$SDKMAN_DIR/bin/sdkman-init.sh"
+    sdk install java {{ versao_java }} || true
+    sdk default java {{ versao_java }}
+  args:
+    executable: /bin/bash
+  when: not java_sdk_stat.stat.exists
+  become: false
+
+- name: Verifica se a versão do Maven já está instalada no SDKMAN
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/.sdkman/candidates/maven/{{ versao_maven }}"
+  register: maven_sdk_stat
+  become: false
+
+- name: Instala e define como padrão o Maven via SDKMAN
+  ansible.builtin.shell: |
+    export SDKMAN_DIR="{{ ansible_env.HOME }}/.sdkman"
+    [[ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]] && source "$SDKMAN_DIR/bin/sdkman-init.sh"
+    sdk install maven {{ versao_maven }} || true
+    sdk default maven {{ versao_maven }}
+  args:
+    executable: /bin/bash
+  when: not maven_sdk_stat.stat.exists
+  become: false
