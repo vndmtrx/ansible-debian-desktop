@@ -1,0 +1,90 @@
+# Configurações do GNOME Desktop (Janelas, Teclas de Atalho, Extensões e Wallpaper)
+# Gerado via dconf
+
+[org/gnome/desktop/background]
+picture-options='zoom'
+picture-uri='file://{{ ansible_env.HOME }}/.local/share/backgrounds/bliss.jpg'
+picture-uri-dark='file://{{ ansible_env.HOME }}/.local/share/backgrounds/bliss.jpg'
+
+[org/gnome/desktop/wm/preferences]
+button-layout='appmenu:minimize,maximize,close'
+
+[org/gnome/desktop/wm/keybindings]
+cycle-group=['<Alt>apostrophe']
+cycle-group-backward=['<Shift><Alt>apostrophe']
+maximize=['<Super>Up']
+switch-applications=['<Super>Tab']
+switch-windows=['<Alt>Tab']
+switch-windows-backward=['<Shift><Alt>Tab']
+unmaximize=['<Super>Down', '<Alt>F5']
+
+[org/gnome/shell]
+enabled-extensions=['burn-my-windows@schneegans.github.com', 'caffeine@patapon.info', 'clipboard-indicator@tudmotu.com', 'no-overview@fthx', 'tilingshell@ferrarodomenico.com', 'windowIsReady_Remover@nunofarruca@gmail.com', 'dash-to-panel@jderose9.github.com', 'appindicatorsupport@rgcjonas.gmail.com', 'blur-my-shell@aunetx', 'custom-hot-corners-extended@G-dH.github.com', 'WallpaperSwitcher@Rishu', 'flypie@schneegans.github.com']
+
+[org/gnome/shell/extensions/burn-my-windows]
+active-profile='{{ ansible_env.HOME }}/.config/burn-my-windows/profiles/transicoes.conf'
+last-extension-version=47
+last-prefs-version=47
+prefs-open-count=2
+preview-effect=''
+
+[org/gnome/shell/extensions/caffeine]
+cli-toggle=false
+indicator-position-max=1
+user-enabled=true
+
+[org/gnome/shell/extensions/dash-to-panel]
+animate-appicon-hover=true
+animate-appicon-hover-animation-extent={'RIPPLE': 4, 'PLANK': 4, 'SIMPLE': 1}
+appicon-margin=0
+appicon-padding=4
+appicon-style='NORMAL'
+desktop-line-custom-color='rgba(200,200,200,0.2)'
+desktop-line-use-custom-color=false
+dot-position='BOTTOM'
+dot-style-focused='METRO'
+dot-style-unfocused='SQUARES'
+extension-version=73
+global-border-radius=0
+hide-overview-on-startup=true
+hotkeys-overlay-combo='TEMPORARILY'
+isolate-monitors=true
+isolate-workspaces=true
+overview-click-to-exit=true
+panel-anchors='{"BOE-0x00000000":"MIDDLE","ACR-83480DBF94229":"MIDDLE"}'
+panel-element-positions='{"BOE-0x00000000":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":true,"position":"stackedTL"},{"element":"rightBox","visible":true,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"centerMonitor"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}],"ACR-83480DBF94229":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":true,"position":"stackedTL"},{"element":"rightBox","visible":true,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"centered"},{"element":"centerBox","visible":false,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}]}'
+panel-lengths='{"BOE-0x00000000":100,"ACR-83480DBF94229":100}'
+panel-positions='{}'
+panel-sizes='{"BOE-0x00000000":48,"ACR-83480DBF94229":48}'
+prefs-opened=false
+show-apps-icon-file=''
+show-showdesktop-delay=1000
+show-showdesktop-hover=false
+show-showdesktop-time=300
+show-tooltip=false
+show-window-previews-timeout=500
+showdesktop-button-width=8
+trans-border-use-custom-color=false
+trans-dynamic-anim-target=0.80000000000000004
+trans-dynamic-anim-time=300
+trans-dynamic-behavior='ALL_WINDOWS'
+trans-dynamic-distance=20
+trans-panel-opacity=0.20000000000000001
+trans-use-border=true
+trans-use-custom-bg=false
+trans-use-custom-gradient=true
+trans-use-custom-opacity=true
+trans-use-dynamic-opacity=true
+window-preview-hide-immediate-click=true
+window-preview-size=240
+window-preview-title-position='TOP'
+
+[org/gnome/shell/extensions/tilingshell]
+edge-tiling-mode='default'
+inner-gaps=uint32 2
+last-version-name-installed='17.3'
+layouts-json='[{"id":"Layout 1","tiles":[{"x":0,"y":0,"width":0.22,"height":0.5,"groups":[1,2]},{"x":0,"y":0.5,"width":0.22,"height":0.5,"groups":[1,2]},{"x":0.22,"y":0,"width":0.56,"height":1,"groups":[2,3]},{"x":0.78,"y":0,"width":0.22,"height":0.5,"groups":[3,4]},{"x":0.78,"y":0.5,"width":0.22,"height":0.5,"groups":[3,4]}]},{"id":"Layout 2","tiles":[{"x":0,"y":0,"width":0.22,"height":1,"groups":[1]},{"x":0.22,"y":0,"width":0.56,"height":1,"groups":[1,2]},{"x":0.78,"y":0,"width":0.22,"height":1,"groups":[2]}]},{"id":"Layout 3","tiles":[{"x":0,"y":0,"width":0.33,"height":1,"groups":[1]},{"x":0.33,"y":0,"width":0.67,"height":1,"groups":[1]}]},{"id":"Layout 4","tiles":[{"x":0,"y":0,"width":0.67,"height":1,"groups":[1]},{"x":0.67,"y":0,"width":0.33,"height":1,"groups":[1]}]}]'
+outer-gaps=uint32 2
+overridden-settings='{}'
+selected-layouts=[['Layout 1', 'Layout 1'], ['Layout 1', 'Layout 1']]
+window-use-custom-border-color=false
