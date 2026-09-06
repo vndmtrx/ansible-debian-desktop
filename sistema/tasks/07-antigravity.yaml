@@ -1,0 +1,153 @@
+---
+# sistema/tasks/07-antigravity.yaml
+
+- name: Verifica se o arquivo Antigravity Standalone foi baixado
+  ansible.builtin.stat:
+    path: "{{ antigravity_download_dir }}/Antigravity.tar.gz"
+  register: antigravity_standalone_tar
+  become: false
+
+- name: Verifica se Antigravity Standalone já está instalado
+  ansible.builtin.stat:
+    path: "{{ antigravity_bin_dir }}/antigravity"
+  register: antigravity_standalone_bin
+  become: false
+
+- name: Reporta status do Antigravity Standalone
+  ansible.builtin.debug:
+    msg: "{{ 'Nenhum arquivo para atualização em ' ~ antigravity_download_dir ~ '. Mantendo a instalação atual do Antigravity Standalone.' if antigravity_standalone_bin.stat.exists else 'Nenhum arquivo para instalação do Antigravity Standalone em ' ~ antigravity_download_dir ~ '. Instalação não realizada.' }}"
+  when: not antigravity_standalone_tar.stat.exists
+  become: false
+
+- name: Verifica se o arquivo Antigravity IDE foi baixado
+  ansible.builtin.stat:
+    path: "{{ antigravity_download_dir }}/Antigravity IDE.tar.gz"
+  register: antigravity_ide_tar
+  become: false
+
+- name: Verifica se Antigravity IDE já está instalado
+  ansible.builtin.stat:
+    path: "{{ antigravity_bin_dir }}/antigravity-ide"
+  register: antigravity_ide_bin
+  become: false
+
+- name: Reporta status do Antigravity IDE
+  ansible.builtin.debug:
+    msg: "{{ 'Nenhum arquivo para atualização em ' ~ antigravity_download_dir ~ '. Mantendo a instalação atual do Antigravity IDE.' if antigravity_ide_bin.stat.exists else 'Nenhum arquivo para instalação do Antigravity IDE em ' ~ antigravity_download_dir ~ '. Instalação não realizada.' }}"
+  when: not antigravity_ide_tar.stat.exists
+  become: false
+
+- name: Instalação e Atualização do Antigravity Standalone
+  when: antigravity_standalone_tar.stat.exists
+  become: false
+  block:
+    - name: Garante diretórios para o Antigravity Standalone
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ antigravity_dir }}/standalone"
+        - "{{ antigravity_bin_dir }}"
+        - "{{ antigravity_desktop_dir }}"
+
+    - name: Descompacta Antigravity Standalone
+      ansible.builtin.unarchive:
+        src: "{{ antigravity_download_dir }}/Antigravity.tar.gz"
+        dest: "{{ antigravity_dir }}/standalone"
+        extra_opts:
+          - --strip-components=1
+        remote_src: true
+
+    - name: Cria link simbólico para antigravity no PATH
+      ansible.builtin.shell: |
+        for bin in antigravity Antigravity; do
+          if [ -f "{{ antigravity_dir }}/standalone/$bin" ]; then
+            ln -sf "{{ antigravity_dir }}/standalone/$bin" "{{ antigravity_bin_dir }}/antigravity"
+            break
+          fi
+        done
+      changed_when: false
+
+    - name: Cria atalho desktop para Antigravity Standalone
+      ansible.builtin.copy:
+        dest: "{{ antigravity_desktop_dir }}/antigravity-standalone.desktop"
+        content: |
+          [Desktop Entry]
+          Name=Antigravity
+          Comment=Google Antigravity Standalone
+          Exec=antigravity %U
+          Terminal=false
+          Type=Application
+          Categories=Development;Utility;
+          StartupWMClass=antigravity
+          StartupNotify=false
+          MimeType=x-scheme-handler/antigravity;
+        mode: '0755'
+
+    - name: Remove arquivo compactado do Antigravity Standalone após instalação
+      ansible.builtin.file:
+        path: "{{ antigravity_download_dir }}/Antigravity.tar.gz"
+        state: absent
+
+- name: Instalação e Atualização do Antigravity IDE
+  when: antigravity_ide_tar.stat.exists
+  become: false
+  block:
+    - name: Garante diretórios para o Antigravity IDE
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ antigravity_dir }}/ide"
+        - "{{ antigravity_bin_dir }}"
+        - "{{ antigravity_desktop_dir }}"
+
+    - name: Descompacta Antigravity IDE
+      ansible.builtin.unarchive:
+        src: "{{ antigravity_download_dir }}/Antigravity IDE.tar.gz"
+        dest: "{{ antigravity_dir }}/ide"
+        extra_opts:
+          - --strip-components=1
+        remote_src: true
+
+    - name: Cria link simbólico para antigravity-ide no PATH
+      ansible.builtin.shell: |
+        for bin in antigravity-ide antigravity Antigravity; do
+          if [ -f "{{ antigravity_dir }}/ide/$bin" ]; then
+            ln -sf "{{ antigravity_dir }}/ide/$bin" "{{ antigravity_bin_dir }}/antigravity-ide"
+            break
+          fi
+        done
+      changed_when: false
+
+    - name: Cria atalho desktop para Antigravity IDE
+      ansible.builtin.copy:
+        dest: "{{ antigravity_desktop_dir }}/antigravity-ide.desktop"
+        content: |
+          [Desktop Entry]
+          Name=Antigravity IDE
+          Comment=Google Antigravity IDE
+          Exec=antigravity-ide %U
+          Icon={{ antigravity_dir }}/ide/resources/app/resources/linux/code.png
+          Terminal=false
+          Type=Application
+          Categories=Development;IDE;
+          StartupWMClass=antigravity-ide
+          StartupNotify=false
+          MimeType=x-scheme-handler/antigravity;
+        mode: '0755'
+
+    - name: Remove arquivo compactado do Antigravity IDE após instalação
+      ansible.builtin.file:
+        path: "{{ antigravity_download_dir }}/Antigravity IDE.tar.gz"
+        state: absent
+
+- name: Atualiza banco de dados de atalhos e cache do GNOME
+  ansible.builtin.shell: |
+    update-desktop-database "{{ antigravity_desktop_dir }}" 2>/dev/null || true
+    touch "{{ antigravity_desktop_dir }}"
+  when: antigravity_standalone_tar.stat.exists or antigravity_ide_tar.stat.exists
+  become: false
+  changed_when: false
