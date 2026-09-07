@@ -9,11 +9,11 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
 ## 🚀 O que este Playbook configura
 
 ### 0. Bootstrap com Relatório do Sistema (`bootstrap.sh`)
-- **Instalação Isolada (PEP 668):** Instala `pipx`, `ansible` e `ansible-lint` de forma segura no perfil do usuário, sem conflitos com pacotes do sistema.
+- **Instalação Isolada (PEP 668):** Instala `pipx` e `ansible` de forma segura no perfil do usuário, sem conflitos com pacotes do sistema.
 - **Relatório Pré-Execução:**
   - **Status do Google Antigravity:** Detecta compactados em `~/Downloads`, reportando se a instalação atual foi mantida, se a instalação foi ignorada por ausência de arquivos ou se uma nova atualização será aplicada (com remoção posterior dos tarballs).
-  - **Verificação de Runtimes:** Inspeciona as versões instaladas de **Java, Maven, Erlang e Elixir**, compara com o playbook (`sistema/vars/main.yaml`) e consulta novidades upstream, alertando caso existam versões mais recentes disponíveis.
-- **Validação Automática:** Valida a sintaxe com `ansible-lint` antes de invocar o playbook com `--ask-become-pass`.
+  - **Verificação de Runtimes:** Inspeciona as versões instaladas de **Java, Maven, Erlang e Elixir**, compara com o playbook (`sistema/defaults/main.yaml`) e consulta novidades upstream, alertando caso existam versões mais recentes disponíveis.
+- **Execução Direta:** Invoca o playbook com `--ask-become-pass` e suporte a repasse de flags CLI (`"$@"`).
 
 ### 1. Base do Sistema & Segurança (`00-base.yaml`)
 - **Fuso Horário & NTP:** `America/Sao_Paulo` com sincronização automática via `systemd-timesyncd`.
@@ -106,10 +106,9 @@ chmod +x bootstrap.sh
 
 O script irá:
 1. Configurar o `$PATH` para `~/.local/bin`.
-2. Instalar `pipx`, `ansible` e `ansible-lint` se necessário.
+2. Instalar `pipx` e `ansible` se necessário.
 3. Exibir o **Relatório do Sistema** com a checagem de runtimes e status do Antigravity.
-4. Validar o playbook com o linter.
-5. Executar o playbook solicitando a senha de `sudo` apenas uma vez.
+4. Executar o playbook solicitando a senha de `sudo` apenas uma vez.
 
 ### 3. Execução Seletiva via Tags
 
