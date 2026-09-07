@@ -266,6 +266,21 @@ check_runtimes_report
 
 echo -e "\n${BOLD}======================================================================${RESET}\n"
 
-# 7. Execução do playbook
-echo "Executando playbook..."
+# 7. Execução do playbook com medição de tempo
+echo -e "${BOLD}Executando playbook...${RESET}"
+START_TIME=$(date +%s)
+
 ansible-playbook playbook.yaml --ask-become-pass "$@"
+
+END_TIME=$(date +%s)
+ELAPSED=$((END_TIME - START_TIME))
+MINUTES=$((ELAPSED / 60))
+SECONDS=$((ELAPSED % 60))
+
+echo -e "\n${BOLD}${GREEN}======================================================================${RESET}"
+if (( MINUTES > 0 )); then
+    echo -e "  ${BOLD}⏱️  Tempo total de execução do playbook: ${MINUTES}m ${SECONDS}s (${ELAPSED} segundos).${RESET}"
+else
+    echo -e "  ${BOLD}⏱️  Tempo total de execução do playbook: ${SECONDS} segundos.${RESET}"
+fi
+echo -e "${BOLD}${GREEN}======================================================================${RESET}\n"
