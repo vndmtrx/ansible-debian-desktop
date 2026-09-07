@@ -1,133 +1,154 @@
-# 🔧 Ansible Debian Desktop
+# 🔧 Ansible Debian Desktop (Debian 13 Trixie)
 
-Ansible playbook para automatizar a configuração de uma instalação desktop de Debian
+Playbook Ansible moderno, modular e **100% idempotente** para provisionamento e padronização completa de ambientes desktop no **Debian 13 (Trixie)**.
 
-Este projeto nasceu da minha necessidade pessoal de manter meus computadores sempre atualizados e padronizados. Como costumo formatar meus computadores com frequência, seja para testar novas configurações ou manter o sistema limpo, precisava de uma forma automatizada e confiável de recriar meu ambiente de trabalho exatamente como gosto.
+Este projeto automatiza a configuração do sistema operacional do zero, garantindo que qualquer máquina recém-formatada fique pronta, segura e com todas as ferramentas de desenvolvimento e customizações visuais exatamente como desejado.
 
-O playbook reflete minhas escolhas pessoais de software e configurações para um desktop de uso geral. É um projeto que evolui constantemente conforme mudo minhas preferências - é essencialmente um espelho do que uso no dia a dia.
+---
 
-## Funcionalidades
+## 🚀 O que este Playbook configura
 
-O playbook está organizado em módulos que tratam de diferentes aspectos do sistema:
+### 0. Bootstrap com Relatório do Sistema (`bootstrap.sh`)
+- **Instalação Isolada (PEP 668):** Instala `pipx`, `ansible` e `ansible-lint` de forma segura no perfil do usuário, sem conflitos com pacotes do sistema.
+- **Relatório Pré-Execução:**
+  - **Status do Google Antigravity:** Detecta compactados em `~/Downloads`, reportando se a instalação atual foi mantida, se a instalação foi ignorada por ausência de arquivos ou se uma nova atualização será aplicada (com remoção posterior dos tarballs).
+  - **Verificação de Runtimes:** Inspeciona as versões instaladas de **Java, Maven, Erlang e Elixir**, compara com o playbook (`sistema/vars/main.yaml`) e consulta novidades upstream, alertando caso existam versões mais recentes disponíveis.
+- **Validação Automática:** Valida a sintaxe com `ansible-lint` antes de invocar o playbook com `--ask-become-pass`.
 
-### Base do Sistema
-- Timezone configurado para Brasil (America/Sao_Paulo)
-- Sistema totalmente atualizado com últimas correções (opcional via variável `atualiza_sistema`)
-- UFW (Uncomplicated Firewall) habilitado e configurado (com interface gráfica GUFW)
-- Ferramentas essenciais de terminal como:
-  - exa (ls moderno)
-  - btop (monitor de sistema)
-  - fzf (fuzzy finder)
-  - Tailspin (visualizador de logs colorido)
-  - gdu (analisador de uso de disco)
-  - glances (monitor de recursos)
-  - mtr (traceroute interativo)
-  - neofetch (informações do sistema)
-- Suporte a Flatpak com Flathub configurado para aplicações isoladas
-  - Inclui temas GTK3 para Flatpak: Adwaita e libadwaita
-  - Utilitários como Flatseal e Warehouse para gerenciar aplicativos Flatpak
+### 1. Base do Sistema & Segurança (`00-base.yaml`)
+- **Fuso Horário & NTP:** `America/Sao_Paulo` com sincronização automática via `systemd-timesyncd`.
+- **Firewall & SSH:** Firewall UFW ativo com regras para OpenSSH e interface gráfica (`gufw`).
+- **Terminal & CLI Moderna:**
+  - `eza` (substituto moderno do `ls` com suporte a git e ícones)
+  - `btop` e `glances` (monitores avançados de hardware e processos)
+  - `fzf` (fuzzy finder interativo de terminal)
+  - `tailspin` (`tspin` nativo do Debian para colorização inteligente de logs)
+  - `gdu` (analisador de uso de disco)
+  - `mtr-tiny` (diagnóstico de rotas e rede em tempo real)
+  - `neowofetch` (sumário visual do sistema)
+- **Flatpak & Flathub:** Suporte nativo ao Flathub integrado ao GNOME Software (`gnome-software-plugin-flatpak`, `xdg-desktop-portal-gnome`), temas Adwaita/Adw-gtk3 e utilitários (`Flatseal`, `Warehouse`, `Extension Manager`).
 
-### Repositórios Extras
-- Extrepo configurado com suporte a repositórios non-free e non-free-firmware
-- LibreWolf como navegador principal focado em privacidade
-- VSCodium para desenvolvimento
-- VirtualBox para virtualização
-- Waydroid para suporte a aplicativos Android
+### 2. Repositórios Upstream Oficiais (`01-extrepo.yaml`)
+- Configuração do `extrepo` para Debian Trixie habilitando os repositórios oficiais:
+  - **LibreWolf:** Navegador principal focado em privacidade.
+  - **VSCodium:** Editor de código com telemetria desativada.
+  - **Docker CE & HashiCorp:** Repositórios oficiais utilizados na stack de virtualização.
 
-### Configurações de Usuário
-- Tilix como emulador de terminal principal
-- Aliases úteis pré-configurados no bash:
-  - Melhoria para comandos comuns (ls, ip, grep com cores)
-  - Atalhos para ferramentas frequentes (vagrant, tailspin, journalctl)
-  - Reinicialização para BIOS/UEFI com um comando
-- Limpeza automática de arquivos antigos em Downloads (mais de 30 dias)
-- Ajustes de usabilidade no LibreWolf (suporte a touch input)
+### 3. Ambiente do Usuário & Shell (`02-usuario.yaml`)
+- **Padrão XDG & Estrutura de Trabalho:**
+  - Binários locais consolidados em `~/.local/bin` (integrado ao `$PATH`).
+  - Criação automática dos diretórios de trabalho: `~/du/dev`, `~/du/conf`, `~/du/dev/tensor`, `~/du/dev/github` e `~/du/dev/docker-stacks`.
+- **Tilix:** Terminal em ladrilhos com suporte a integração VTE (`/etc/profile.d/vte.sh`).
+- **Backup de Extensões & GNOME (`salvar-extensoes`):** Comando utilitário que exporta as configurações ativas do GNOME e de todas as extensões para `~/du/conf/extensoes_YYYYMMDDHHMMSS.dconf`.
+- **Aliases de Produtividade & IA:**
+  - Atalhos de terminal (`ls="eza"`, `ts="tspin"`, `jc="journalctl | tspin"`, etc.).
+  - **TensorFlow com Docker (`tensor`):** Sobe um servidor Jupyter com TensorFlow oficial mapeando `~/du/dev/tensor` diretamente na porta 8888 sem sujar o Python do host.
+    > [!TIP]
+    > **Aceleração por Hardware (GPU) no Docker:**
+    > O alias padrão executa em **CPU**. Caso queira rodar em uma máquina com GPU dedicada (ex: PC de trabalho), os requisitos para cada fabricante são:
+    > - **NVIDIA (CUDA):** Driver NVIDIA instalado + **NVIDIA Container Toolkit** (`nvidia-container-toolkit` configurado no Docker). Imagem: `tensorflow/tensorflow:latest-gpu-jupyter`. Parâmetro: `--gpus all`.
+    > - **AMD Radeon (ROCm):** Driver `amdgpu` e ROCm no host (usuário nos grupos `video,render`). Imagem: `rocm/tensorflow:latest`. Parâmetros: `--device=/dev/kfd --device=/dev/dri --group-add video`.
+    > - **Intel Arc / Xe:** Drivers de computação OpenCL/Level Zero (`intel-opencl-icd`, `intel-level-zero-gpu`). Imagem: `intel/intel-extension-for-tensorflow:latest`. Parâmetro: `--device=/dev/dri`.
+- **Limpeza Automática:** Agendamento no `cron` para mover arquivos com mais de 30 dias em `~/Downloads` para a lixeira (`gio trash`).
+- **Touch Input:** Suporte a toque contínuo no LibreWolf (`MOZ_USE_XINPUT2=1` via PAM).
 
-### Desenvolvimento
-- ASDF v0.16.4 para gerenciamento de runtimes e versões
-  - Java 23 em duas distribuições (Oracle e OpenJDK)
-  - Maven 3.9.9
-  - Ruby 3.4.2 e Rails 8.0.1
-  - Erlang 27.3.2 e Elixir 1.18.3-otp-27
-- Instalação completa com todas as dependências necessárias
-- Configuração do PATH e todas as variáveis de ambiente
+### 4. Runtimes: ASDF (`03-asdf.yaml` & `04-asdf-shims.yaml`)
+- **ASDF v0.20.0+:** Binário Go moderno e de alta velocidade instalado em `~/.local/bin/asdf`.
+- **Erlang & Elixir:**
+  - Compilação do Erlang/OTP 29 (`29.0.6`) com dependências completas (OpenSSL, wxWidgets, Ncurses).
+  - Elixir pré-compilado (`1.20.4-otp-29`) integrado via shims e `.tool-versions` global.
 
-### Virtualização e Containers
-- VirtualBox 7.1 e KVM/QEMU para virtualização
-- Vagrant com plugins essenciais:
-  - vagrant-cachier (cache de pacotes)
-  - vagrant-hostmanager (gerenciamento automático de hosts)
-  - vagrant-libvirt (suporte a libvirt/KVM)
-- Configuração automática de grupos e permissões para libvirt e KVM
-- Interface gráfica virt-manager para gerenciamento de VMs
+### 5. Runtimes: SDKMAN! (`05-sdkman.yaml`)
+- Instalação e gestão isolada para o ecossistema JVM:
+  - **Java:** Eclipse Temurin OpenJDK 26 (`26-tem`).
+  - **Maven:** Apache Maven (`3.9.16`).
+  - Configurados automaticamente como versões padrão do sistema.
 
-### GNOME
-- Extensões selecionadas do GNOME Shell:
-  - Blur my Shell para efeitos visuais modernos
-  - Burn my Windows para animações
-  - Dash to Dock para um dock personalizável
-  - AppIndicator e Clipboard Indicator para produtividade
-  - Tiling Shell para gerenciamento de janelas
-  - Caffeine para evitar que o sistema entre em suspensão
-  - Custom Hot Corners Extended para ações nos cantos da tela
-  - No Overview para iniciar diretamente na área de trabalho
-  - Wallpaper Switcher para alternar papéis de parede
-  - Window Is Ready para remover notificações de janelas
+### 6. Virtualização & Containers (`06-virtualizacao-containers.yaml`)
+- **Docker CE:** Motor Docker upstream completo com `docker-compose-plugin` e `docker-buildx-plugin`.
+- **KVM/QEMU & Libvirt:** Virtualização nativa de alto desempenho via kernel Linux com GUI `virt-manager`.
+- **Vagrant Upstream:** Vagrant 2.4.9 com plugins gerenciados nativamente:
+  - `vagrant-libvirt` (provider KVM/QEMU)
+  - `vagrant-cachier` (cache inteligente de pacotes entre VMs)
+  - `vagrant-hostmanager` (resolução dinâmica de `/etc/hosts` para máquinas virtuais)
+- **Permissões:** Usuário integrado aos grupos `docker`, `libvirt`, `kvm` e `libvirt-qemu`.
 
-## Aplicações Incluídas
+### 7. Google Antigravity (`07-antigravity.yaml`)
+- Instalação modular do **Antigravity Standalone** e **Antigravity IDE**:
+  - Extração inteligente de pacotes colocados em `~/Downloads/`.
+  - Links simbólicos no `~/.local/bin/` (`antigravity` e `antigravity-ide`).
+  - Atalhos `.desktop` com ícones oficiais e integração ao menu de aplicativos do GNOME.
+  - Remoção automática dos tarballs pós-instalação para manter o estado limpo e idempotente.
 
-### Aplicações do Sistema
-- Navegadores: LibreWolf, Chromium
-- Ferramentas gráficas: GIMP, Inkscape (via Flatpak)
-- Entretenimento: Stremio (via Flatpak)
-- Desenvolvimento: VSCodium
-- Redes: Wireshark (via Flatpak)
+### 8. Customização GNOME & Backup/Restore (`99-gnome-extensions.yaml`)
+- **Instalação Silenciosa (`gext`):** Utiliza `gnome-extensions-cli` via backend `--filesystem`, dispensando prompts interativos na tela.
+- **12 Extensões GNOME 48:**
+  - *Dash to Panel* (barra inferior unificada), *AppIndicator*, *Blur my Shell*, *Burn My Windows*, *Caffeine*, *Custom Hot Corners Extended*, *Clipboard Indicator*, *No Overview*, *Tiling Shell*, *Wallpaper Switcher*, *Window Is Ready Remover*, *Fly-Pie*.
+- **Transições e Janelas:** Perfil customizado do Burn My Windows (`transicoes.conf`).
+- **Restauração Atômica (`dconf`):** Template Jinja2 que sincroniza instantaneamente atalhos de teclado (`Alt+Tab`, `Super+Up`, `Alt+'`), botões de janela (`minimize,maximize,close`) e configurações das extensões.
+- **Papel de Parede Bliss:** Papel de parede clássico do Windows XP (alta definição 600 DPI) aplicado automaticamente aos modos claro e escuro.
 
-## Uso
+---
 
-1. Clone o repositório:
+## 💻 Como Usar
+
+### 1. Clonar o repositório
 ```bash
 git clone https://github.com/vndmtrx/ansible-debian-desktop.git
 cd ansible-debian-desktop
 ```
 
-2. Execute o script de bootstrap:
+### 2. Executar o bootstrap
 ```bash
 chmod +x bootstrap.sh
 ./bootstrap.sh
 ```
 
-O script de bootstrap irá:
-- Atualizar os repositórios do sistema
-- Instalar Ansible e ansible-lint
-- Executar o lint do playbook
-- Executar o playbook principal
+O script irá:
+1. Configurar o `$PATH` para `~/.local/bin`.
+2. Instalar `pipx`, `ansible` e `ansible-lint` se necessário.
+3. Exibir o **Relatório do Sistema** com a checagem de runtimes e status do Antigravity.
+4. Validar o playbook com o linter.
+5. Executar o playbook solicitando a senha de `sudo` apenas uma vez.
 
-## Personalização
+### 3. Execução Seletiva via Tags
 
-O playbook pode ser personalizado através das variáveis definidas em `sistema/vars/main.yaml`. Algumas variáveis importantes:
+Você pode repassar argumentos e tags diretamente pelo `./bootstrap.sh` (ou via `ansible-playbook`):
 
-- `atualiza_sistema`: Controla se o sistema será atualizado (padrão: false)
-- `pacotes_sistema`: Lista de pacotes essenciais do sistema
-- `apps_terminal`: Lista de aplicações de terminal a serem instaladas
-- `apps_gui`: Lista de aplicações gráficas a serem instaladas
-- `apps_flatpak`: Lista de aplicações Flatpak a serem instaladas
-- `repos_extrepo`: Lista de repositórios extrepo a serem habilitados
-- `versoes_java_asdf`: Versões do Java a serem instaladas
-- `extensoes_gnome`: Lista de extensões GNOME a serem instaladas
+```bash
+# Executar apenas as customizações do GNOME (extensões, dconf, wallpaper)
+./bootstrap.sh --tags gnome
 
-## Licença
+# Executar apenas os runtimes de desenvolvimento (ASDF, SDKMAN, Java, Maven, Erlang, Elixir)
+./bootstrap.sh --tags runtimes
 
-Este projeto está licenciado sob a MIT License - Copyright (c) 2025 Eduardo N.S.R.
+# Executar apenas a stack de virtualização e containers (Docker, KVM, Vagrant)
+./bootstrap.sh --tags virt
 
-Escolhi esta licença porque, embora este seja meu ambiente pessoal, acredito que outros podem se beneficiar dele, seja usando-o como está, adaptando-o às suas necessidades ou apenas aprendendo com as soluções implementadas.
+# Executar tudo, exceto virtualização
+./bootstrap.sh --skip-tags virt
+```
 
-## Contribuindo
+---
 
-Como este playbook reflete meu ambiente pessoal de trabalho, contribuições precisam vir acompanhadas de uma explicação clara sobre como a mudança proposta pode melhorar minha experiência de uso do desktop. Embora sugestões sejam sempre bem-vindas, pull requests devem incluir:
+## ⚙️ Personalização e Boas Práticas
 
-1. Descrição detalhada do benefício da mudança
-2. Por que você considera que essa alteração seria útil para o meu workflow
-3. Se adicionar novo software, explicar por que ele seria melhor que o atual
+Alinhado às melhores práticas do Ansible (níveis de precedência):
+- **[`sistema/defaults/main.yaml`](file:///c:/Users/Pichau/Documentos/dev/ansible-debian-desktop/sistema/defaults/main.yaml):** Valores padrão customizáveis (precedência nível 2). É onde ficam versões de runtimes, listas de pacotes e preferências. Pode ser sobrescrito facilmente por `host_vars`, `group_vars` ou `-e`.
+- **[`sistema/vars/main.yaml`](file:///c:/Users/Pichau/Documentos/dev/ansible-debian-desktop/sistema/vars/main.yaml):** Constantes internas e caminhos estruturais (precedência nível 16).
 
-O objetivo é manter o playbook focado e eficiente, refletindo um ambiente de trabalho real e em uso.
+| Variável | Descrição | Padrão |
+| :--- | :--- | :--- |
+| `atualiza_sistema` | Executa `apt upgrade` completo do sistema | `false` |
+| `versao_java` | Identificador do Java no SDKMAN! | `'26-tem'` |
+| `versao_maven` | Versão do Apache Maven no SDKMAN! | `'3.9.16'` |
+| `versao_erlang` | Versão do Erlang/OTP compilada via ASDF | `'29.0.6'` |
+| `versao_elixir` | Versão do Elixir instalada via ASDF | `'1.20.4-otp-29'` |
+| `versao_asdf` | Versão do binário ASDF (Go) | `'v0.20.0'` |
+| `extensoes_gnome` | Lista de extensões GNOME a instalar | *(12 extensões)* |
+
+---
+
+## 📄 Licença
+
+MIT License - Copyright (c) 2025-2026 Eduardo N.S.R.
