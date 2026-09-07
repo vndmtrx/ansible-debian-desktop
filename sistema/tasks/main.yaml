@@ -70,6 +70,22 @@
     - desktop
     - cloud
 
+- name: Importar configurações do Tailscale
+  ansible.builtin.import_tasks: 09-tailscale.yaml
+  tags:
+    - tailscale
+    - vpn
+    - rede
+    - apps
+
+- name: Importar configurações do Vivaldi
+  ansible.builtin.import_tasks: 10-vivaldi.yaml
+  tags:
+    - vivaldi
+    - navegadores
+    - browser
+    - apps
+
 - name: Importar configurações das extensões GNOME
   ansible.builtin.import_tasks: 99-gnome-extensions.yaml
   tags:

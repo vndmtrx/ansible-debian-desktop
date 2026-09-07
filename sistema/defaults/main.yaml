@@ -72,14 +72,12 @@ repos_extrepo:
   - vscodium
   - docker-ce
   - hashicorp
-  - tailscale
 
 # Pacotes a serem instalados dos repositórios Extrepo
 # Usado em: sistema/tasks/01-extrepo.yaml
 pacotes_extrepo:
   - librewolf
   - codium
-  - tailscale
 
 # Diretórios de trabalho do usuário
 # Usado em: sistema/tasks/02-usuario.yaml
