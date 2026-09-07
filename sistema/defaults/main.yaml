@@ -1,0 +1,171 @@
+---
+# sistema/defaults/main.yaml
+# yamllint disable rule:commas
+#
+# Valores padrão customizáveis da role sistema (Ansible Precedence Level 2).
+# Podem ser facilmente sobrescritos por host_vars, group_vars ou flags de execução.
+
+# Controla se o sistema será atualizado via apt upgrade
+# Usado em: sistema/tasks/00-base.yaml
+atualiza_sistema: false
+
+# Pacotes essenciais do sistema operacional
+# Usado em: sistema/tasks/00-base.yaml
+pacotes_sistema:
+  - ufw
+  - openssh-server
+  - systemd-timesyncd
+  - cron
+  - flatpak
+  - gnome-software-plugin-flatpak
+  - xdg-desktop-portal-gnome
+
+# Lista de serviços do sistema que devem estar ativos
+# Usado em: sistema/tasks/00-base.yaml
+servicos_sistema:
+  - ufw.service
+  - ssh.service
+  - systemd-timesyncd.service
+  - cron.service
+
+# Aplicações de terminal (CLI moderna)
+# Usado em: sistema/tasks/00-base.yaml
+apps_terminal:
+  - cowsay
+  - neowofetch
+  - git
+  - eza
+  - gdu
+  - btop
+  - mtr-tiny
+  - glances
+  - fzf
+  - tailspin
+
+# Aplicações com interface gráfica
+# Usado em: sistema/tasks/00-base.yaml
+apps_gui:
+  - tilix
+  - chromium
+  - gufw
+
+# Aplicações Flatpak instaladas via Flathub
+# Usado em: sistema/tasks/00-base.yaml
+apps_flatpak:
+  - org.gtk.Gtk3theme.adw-gtk3
+  - org.gtk.Gtk3theme.adw-gtk3-dark
+  - org.gtk.Gtk3theme.Adwaita-dark
+  - org.inkscape.Inkscape
+  - org.gimp.GIMP
+  - com.stremio.Stremio
+  - org.wireshark.Wireshark
+  - com.github.tchx84.Flatseal
+  - io.github.flattool.Warehouse
+  - com.mattjakeman.ExtensionManager
+
+# Repositórios Extrepo a serem habilitados no Debian Trixie
+# Usado em: sistema/tasks/01-extrepo.yaml
+repos_extrepo:
+  - librewolf
+  - vscodium
+  - docker-ce
+  - hashicorp
+
+# Pacotes a serem instalados dos repositórios Extrepo
+# Usado em: sistema/tasks/01-extrepo.yaml
+pacotes_extrepo:
+  - librewolf
+  - codium
+
+# Diretórios de trabalho do usuário
+# Usado em: sistema/tasks/02-usuario.yaml
+diretorios_usuario:
+  - "{{ ansible_env.HOME }}/du/dev"
+  - "{{ ansible_env.HOME }}/du/conf"
+  - "{{ ansible_env.HOME }}/du/dev/tensor"
+  - "{{ ansible_env.HOME }}/du/dev/github"
+  - "{{ ansible_env.HOME }}/du/dev/docker-stacks"
+
+# Aliases para o Bash
+# Usado em: sistema/tasks/02-usuario.yaml
+aliases_bash:
+  - 'ip="ip --color=auto"'
+  - 'ls="eza --color=auto"'
+  - 'grep="grep --color=auto"'
+  - 'ts="tspin"'
+  - 'll="ls -lah"'
+  - 'vg="vagrant"'
+  - 'jc="sudo journalctl -f | tspin"'
+  - 'mtr="mtr -t"'
+  - 'rebootbios="sudo systemctl reboot --firmware"'
+  - 'tensor="docker run -it --rm -p 8888:8888 -v $HOME/du/dev/tensor:/tf/notebooks tensorflow/tensorflow:latest-jupyter"'
+  - 'salvar-extensoes="$HOME/.local/bin/salvar-extensoes"'
+
+# Configurações do ASDF Core
+# Usado em: sistema/tasks/03-asdf.yaml
+versao_asdf: 'v0.20.0'
+asdf_instalacao_limpa: false
+
+# Configurações do SDKMAN! (Java e Maven)
+# Usado em: sistema/tasks/05-sdkman.yaml
+versao_java: '26-tem'
+versao_maven: '3.9.16'
+
+# Versões do Erlang e Elixir instaladas via ASDF
+# Usado em: sistema/tasks/04-asdf-shims.yaml
+versao_erlang: '29.0.6'
+versao_elixir: '1.20.4-otp-29'
+
+# Pacotes necessários para virtualização e containers
+# Usado em: sistema/tasks/06-virtualizacao-containers.yaml
+pacotes_virt:
+  - vagrant
+  - qemu-kvm
+  - qemu-utils
+  - libvirt-daemon-system
+  - libvirt-clients
+  - bridge-utils
+  - virtinst
+  - virt-manager
+  - libvirt-dev
+  - docker-ce
+  - docker-ce-cli
+  - docker-buildx-plugin
+  - docker-compose-plugin
+
+# Plugins do Vagrant instalados via vagrant plugin install
+# Usado em: sistema/tasks/06-virtualizacao-containers.yaml
+plugins_vagrant:
+  - vagrant-libvirt
+  - vagrant-cachier
+  - vagrant-hostmanager
+
+# Grupos necessários para o usuário no módulo de virtualização
+# Usado em: sistema/tasks/06-virtualizacao-containers.yaml
+grupos_virt:
+  - libvirt
+  - kvm
+  - libvirt-qemu
+  - docker
+
+# Serviços que devem estar ativos
+# Usado em: sistema/tasks/06-virtualizacao-containers.yaml
+servicos_virt:
+  - libvirtd.service
+  - docker.service
+
+# Extensões GNOME a serem instaladas via gext
+# Usado em: sistema/tasks/99-gnome-extensions.yaml
+extensoes_gnome:
+  - { id: 1160, nome: "Dash to Panel" }
+  - { id: 615,  nome: "AppIndicator and KStatusNotifierItem Support" }
+  - { id: 3193, nome: "Blur my Shell" }
+  - { id: 4679, nome: "Burn my Windows" }
+  - { id: 517,  nome: "Caffeine" }
+  - { id: 4167, nome: "Custom Hot Corners - Extended" }
+  - { id: 779,  nome: "Clipboard Indicator" }
+  - { id: 4099, nome: "No Overview" }
+  - { id: 7065, nome: "Tiling Shell" }
+  - { id: 4812, nome: "Wallpaper Switcher" }
+  - { id: 1007, nome: "Window Is Ready - Notification Remover" }
+  - { id: 3433, nome: "Fly-Pie" }
