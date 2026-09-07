@@ -26,13 +26,15 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
   - `gdu` (analisador de uso de disco)
   - `mtr-tiny` (diagnóstico de rotas e rede em tempo real)
   - `neowofetch` (sumário visual do sistema)
-- **Flatpak & Flathub:** Suporte nativo ao Flathub integrado ao GNOME Software (`gnome-software-plugin-flatpak`, `xdg-desktop-portal-gnome`), temas Adwaita/Adw-gtk3 e utilitários (`Flatseal`, `Warehouse`, `Extension Manager`).
+- **Flatpak & Flathub:** Suporte nativo ao Flathub integrado ao GNOME Software (`gnome-software-plugin-flatpak`, `xdg-desktop-portal-gnome`), suporte a FUSE (`libfuse2t64`), temas Adwaita/Adw-gtk3, cliente VPN **Trayscale** (`dev.deedles.Trayscale`) e utilitários (`Flatseal`, `Warehouse`, `Extension Manager`).
 
-### 2. Repositórios Upstream Oficiais (`01-extrepo.yaml`)
+### 2. Repositórios Upstream Oficiais & Navegadores (`01-extrepo.yaml`)
 - Configuração do `extrepo` para Debian Trixie habilitando os repositórios oficiais:
   - **LibreWolf:** Navegador principal focado em privacidade.
+  - **Tailscale:** Daemon de VPN mesh seguro (`tailscale` e serviço `tailscaled`).
   - **VSCodium:** Editor de código com telemetria desativada.
   - **Docker CE & HashiCorp:** Repositórios oficiais utilizados na stack de virtualização.
+- **Vivaldi Browser:** Configuração automática do repositório APT oficial da Vivaldi com chave GPG dearmorada e instalação do pacote `vivaldi-stable`.
 
 ### 3. Ambiente do Usuário & Shell (`02-usuario.yaml`)
 - **Padrão XDG & Estrutura de Trabalho:**
@@ -80,7 +82,13 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
   - Atalhos `.desktop` com ícones oficiais e integração ao menu de aplicativos do GNOME.
   - Remoção automática dos tarballs pós-instalação para manter o estado limpo e idempotente.
 
-### 8. Customização GNOME & Backup/Restore (`99-gnome-extensions.yaml`)
+### 8. pCloud Drive (`08-pcloud.yaml`)
+- **Instalação AppImage Idempotente:**
+  - Baixa ou importa o cliente oficial pCloud Electron 64-bit para `~/.local/share/pcloud/pcloud.AppImage`.
+  - Só efetua o download se o binário não estiver presente, respeitando as auto-atualizações posteriores do próprio pCloud.
+  - Link simbólico em `~/.local/bin/pcloud` e atalho `.desktop` com extração do ícone oficial para o menu de aplicativos.
+
+### 9. Customização GNOME & Backup/Restore (`99-gnome-extensions.yaml`)
 - **Instalação Silenciosa (`gext`):** Utiliza `gnome-extensions-cli` via backend `--filesystem`, dispensando prompts interativos na tela.
 - **12 Extensões GNOME 48:**
   - *Dash to Panel* (barra inferior unificada), *AppIndicator*, *Blur my Shell*, *Burn My Windows*, *Caffeine*, *Custom Hot Corners Extended*, *Clipboard Indicator*, *No Overview*, *Tiling Shell*, *Wallpaper Switcher*, *Window Is Ready Remover*, *Fly-Pie*.
@@ -123,6 +131,9 @@ Você pode repassar argumentos e tags diretamente pelo `./bootstrap.sh` (ou via 
 
 # Executar apenas a stack de virtualização e containers (Docker, KVM, Vagrant)
 ./bootstrap.sh --tags virt
+
+# Executar apenas a instalação do pCloud AppImage
+./bootstrap.sh --tags pcloud
 
 # Executar tudo, exceto virtualização
 ./bootstrap.sh --skip-tags virt

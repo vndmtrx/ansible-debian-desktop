@@ -62,6 +62,14 @@
     - ide
     - dev
 
+- name: Importar configurações do pCloud
+  ansible.builtin.import_tasks: 08-pcloud.yaml
+  tags:
+    - pcloud
+    - apps
+    - desktop
+    - cloud
+
 - name: Importar configurações das extensões GNOME
   ansible.builtin.import_tasks: 99-gnome-extensions.yaml
   tags:
