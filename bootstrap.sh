@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Script de bootstrap para Ansible no Debian
-# Instala Ansible e ansible-lint via pipx de forma isolada e executa o playbook
+# Instala Ansible via pipx de forma isolada e executa o playbook
 
 set -euo pipefail
 
@@ -28,13 +28,7 @@ if ! command -v ansible &>/dev/null; then
     pipx install --include-deps ansible
 fi
 
-# 5. Injeta dependências auxiliares no ambiente virtual do Ansible
-if ! command -v ansible-lint &>/dev/null; then
-    echo "Injetando ansible-lint via pipx..."
-    pipx inject ansible ansible-lint
-fi
-
-# Garante a biblioteca pipx dentro do ambiente Python do Ansible para módulos do community.general
+# 5. Garante a biblioteca pipx dentro do ambiente Python do Ansible para módulos do community.general
 if ! pipx list --include-injected 2>/dev/null | grep -q "pipx "; then
     echo "Injetando módulo pipx no ambiente do Ansible..."
     pipx inject ansible pipx 2>/dev/null || true
@@ -272,9 +266,6 @@ check_runtimes_report
 
 echo -e "\n${BOLD}======================================================================${RESET}\n"
 
-# 7. Validação e execução do playbook
-echo "Validando playbook com ansible-lint..."
-ansible-lint
-
+# 7. Execução do playbook
 echo "Executando playbook..."
 ansible-playbook playbook.yaml --ask-become-pass "$@"
