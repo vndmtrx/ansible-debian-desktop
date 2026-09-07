@@ -3,24 +3,70 @@
 
 - name: Importar configurações base
   ansible.builtin.import_tasks: 00-base.yaml
+  tags:
+    - base
+    - sistema
 
 - name: Importar configurações de repositório
   ansible.builtin.import_tasks: 01-extrepo.yaml
+  tags:
+    - extrepo
+    - repos
+    - sistema
 
 - name: Importar configurações de usuário
   ansible.builtin.import_tasks: 02-usuario.yaml
+  tags:
+    - usuario
+    - dotfiles
+    - sistema
 
 - name: Importar configurações do ASDF
   ansible.builtin.import_tasks: 03-asdf.yaml
+  tags:
+    - asdf
+    - runtimes
+    - dev
 
 - name: Importar configurações dos shims para ASDF
   ansible.builtin.import_tasks: 04-asdf-shims.yaml
+  tags:
+    - asdf
+    - erlang
+    - elixir
+    - runtimes
+    - dev
 
-- name: Importar configurações de virtualização
-  ansible.builtin.import_tasks: 06-vagrant-kvm-qemu.yaml
+- name: Importar configurações do SDKMAN (Java e Maven)
+  ansible.builtin.import_tasks: 05-sdkman.yaml
+  tags:
+    - sdkman
+    - java
+    - maven
+    - runtimes
+    - dev
 
-- name: Instalar LogSeq
-  ansible.builtin.import_tasks: 07-logseq.yaml
+- name: Importar configurações de virtualização e containers
+  ansible.builtin.import_tasks: 06-virtualizacao-containers.yaml
+  tags:
+    - virt
+    - docker
+    - vagrant
+    - kvm
+    - containers
+
+- name: Importar configurações do Antigravity
+  ansible.builtin.import_tasks: 07-antigravity.yaml
+  tags:
+    - antigravity
+    - ide
+    - dev
 
 - name: Importar configurações das extensões GNOME
   ansible.builtin.import_tasks: 99-gnome-extensions.yaml
+  tags:
+    - gnome
+    - desktop
+    - extensions
+    - dconf
+    - ui
