@@ -28,10 +28,16 @@ if ! command -v ansible &>/dev/null; then
     pipx install --include-deps ansible
 fi
 
-# 5. Injeta ansible-lint no ambiente virtual do Ansible
+# 5. Injeta dependências auxiliares no ambiente virtual do Ansible
 if ! command -v ansible-lint &>/dev/null; then
     echo "Injetando ansible-lint via pipx..."
     pipx inject ansible ansible-lint
+fi
+
+# Garante a biblioteca pipx dentro do ambiente Python do Ansible para módulos do community.general
+if ! pipx list --include-injected 2>/dev/null | grep -q "pipx "; then
+    echo "Injetando módulo pipx no ambiente do Ansible..."
+    pipx inject ansible pipx 2>/dev/null || true
 fi
 
 # 6. Relatório do Sistema: Verificação de Runtimes e Antigravity
