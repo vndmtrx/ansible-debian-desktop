@@ -61,6 +61,13 @@
         name: "{{ pacotes_extrepo }}"
         state: present
 
+    - name: Habilita e inicia o serviço do Tailscale
+      ansible.builtin.systemd_service:
+        name: tailscaled.service
+        state: started
+        enabled: true
+      when: "'tailscale' in pacotes_extrepo"
+
     - name: Garante diretório para keyrings adicionais do apt
       ansible.builtin.file:
         path: /etc/apt/keyrings
