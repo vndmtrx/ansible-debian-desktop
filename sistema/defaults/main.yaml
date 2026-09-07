@@ -19,6 +19,7 @@ pacotes_sistema:
   - flatpak
   - gnome-software-plugin-flatpak
   - xdg-desktop-portal-gnome
+  - libfuse2t64
 
 # Lista de serviços do sistema que devem estar ativos
 # Usado em: sistema/tasks/00-base.yaml
@@ -27,6 +28,7 @@ servicos_sistema:
   - ssh.service
   - systemd-timesyncd.service
   - cron.service
+  - tailscaled.service
 
 # Aplicações de terminal (CLI moderna)
 # Usado em: sistema/tasks/00-base.yaml
@@ -62,6 +64,7 @@ apps_flatpak:
   - com.github.tchx84.Flatseal
   - io.github.flattool.Warehouse
   - com.mattjakeman.ExtensionManager
+  - dev.deedles.Trayscale
 
 # Repositórios Extrepo a serem habilitados no Debian Trixie
 # Usado em: sistema/tasks/01-extrepo.yaml
@@ -70,12 +73,14 @@ repos_extrepo:
   - vscodium
   - docker-ce
   - hashicorp
+  - tailscale
 
 # Pacotes a serem instalados dos repositórios Extrepo
 # Usado em: sistema/tasks/01-extrepo.yaml
 pacotes_extrepo:
   - librewolf
   - codium
+  - tailscale
 
 # Diretórios de trabalho do usuário
 # Usado em: sistema/tasks/02-usuario.yaml
@@ -169,3 +174,10 @@ extensoes_gnome:
   - { id: 4812, nome: "Wallpaper Switcher" }
   - { id: 1007, nome: "Window Is Ready - Notification Remover" }
   - { id: 3433, nome: "Fly-Pie" }
+
+# Configurações do pCloud Drive AppImage
+# Usado em: sistema/tasks/08-pcloud.yaml
+pcloud_dir: "{{ ansible_env.HOME }}/.local/share/pcloud"
+pcloud_bin_dir: "{{ ansible_env.HOME }}/.local/bin"
+pcloud_desktop_dir: "{{ ansible_env.HOME }}/.local/share/applications"
+pcloud_api_code: "XZopbc5ZpqOBs9mkVRk4zDHD7TjDJpQBcfzk"

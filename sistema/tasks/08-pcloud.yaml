@@ -1,0 +1,109 @@
+---
+# sistema/tasks/08-pcloud.yaml
+
+- name: Garante diretórios de suporte ao pCloud
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ pcloud_dir }}"
+    - "{{ pcloud_bin_dir }}"
+    - "{{ pcloud_desktop_dir }}"
+  become: false
+
+- name: Verifica se o pCloud AppImage já está instalado
+  ansible.builtin.stat:
+    path: "{{ pcloud_dir }}/pcloud.AppImage"
+  register: pcloud_installed_stat
+  become: false
+
+- name: Verifica se o pCloud AppImage foi baixado manualmente em Downloads
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/Downloads/pCloud.AppImage"
+  register: pcloud_downloaded_stat
+  when: not pcloud_installed_stat.stat.exists
+  become: false
+
+- name: Copia pCloud AppImage de Downloads se disponível
+  ansible.builtin.copy:
+    src: "{{ ansible_env.HOME }}/Downloads/pCloud.AppImage"
+    dest: "{{ pcloud_dir }}/pcloud.AppImage"
+    mode: '0755'
+  when:
+    - not pcloud_installed_stat.stat.exists
+    - pcloud_downloaded_stat.stat.exists | default(false)
+  become: false
+
+- name: Obtém e baixa o pCloud Drive AppImage diretamente da pCloud
+  ansible.builtin.shell: |
+    set -eo pipefail
+    API_RES=$(curl -s "https://api.pcloud.com/getpublinkdownload?code={{ pcloud_api_code }}")
+    DLHOST=$(echo "$API_RES" | grep -E -o '[a-zA-Z0-9\.-]+\.pcloud\.com' | head -n 1)
+    DLPATH=$(echo "$API_RES" | grep -E -o '"path":\s*"[^"]+"' | cut -d'"' -f4 | sed 's/\\//g')
+    if [ -n "$DLHOST" ] && [ -n "$DLPATH" ]; then
+      curl -fSL "https://${DLHOST}${DLPATH}" -o "{{ pcloud_dir }}/pcloud.AppImage"
+    else
+      echo "Erro ao obter URL de download do pCloud via API: $API_RES" >&2
+      exit 1
+    fi
+  when:
+    - not pcloud_installed_stat.stat.exists
+    - not (pcloud_downloaded_stat.stat.exists | default(false))
+  become: false
+
+- name: Garante permissão de execução para o pCloud AppImage
+  ansible.builtin.file:
+    path: "{{ pcloud_dir }}/pcloud.AppImage"
+    mode: '0755'
+  become: false
+
+- name: Cria link simbólico para pcloud no PATH
+  ansible.builtin.file:
+    src: "{{ pcloud_dir }}/pcloud.AppImage"
+    dest: "{{ pcloud_bin_dir }}/pcloud"
+    state: link
+    force: true
+  become: false
+
+- name: Verifica se o ícone do pCloud existe
+  ansible.builtin.stat:
+    path: "{{ pcloud_dir }}/pcloud.png"
+  register: pcloud_icon_stat
+  become: false
+
+- name: Extrai o ícone do pCloud AppImage
+  ansible.builtin.shell: |
+    cd "{{ pcloud_dir }}"
+    ./pcloud.AppImage --appimage-extract pcloud.png 2>/dev/null || true
+    if [ -f "{{ pcloud_dir }}/squashfs-root/pcloud.png" ]; then
+      mv "{{ pcloud_dir }}/squashfs-root/pcloud.png" "{{ pcloud_dir }}/pcloud.png"
+      rm -rf "{{ pcloud_dir }}/squashfs-root"
+    fi
+  when: not pcloud_icon_stat.stat.exists
+  changed_when: false
+  become: false
+
+- name: Cria lançador desktop para pCloud
+  ansible.builtin.copy:
+    dest: "{{ pcloud_desktop_dir }}/pcloud.desktop"
+    content: |
+      [Desktop Entry]
+      Name=pCloud
+      Comment=pCloud Drive Desktop Client
+      Exec=pcloud %u
+      Icon={{ pcloud_dir }}/pcloud.png
+      Terminal=false
+      Type=Application
+      Categories=Network;FileTransfer;Utility;
+      StartupWMClass=pcloud
+      MimeType=x-scheme-handler/pcloud;
+    mode: '0755'
+  become: false
+
+- name: Atualiza banco de dados de atalhos e cache do GNOME
+  ansible.builtin.shell: |
+    update-desktop-database "{{ pcloud_desktop_dir }}" 2>/dev/null || true
+    touch "{{ pcloud_desktop_dir }}"
+  changed_when: false
+  become: false
