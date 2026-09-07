@@ -1,0 +1,46 @@
+---
+# sistema/tasks/10-vivaldi.yaml
+
+- name: Instalação e configuração do navegador Vivaldi
+  become: true
+  block:
+    - name: Garante diretório para keyrings do apt
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Baixa chave pública de assinatura do repositório Vivaldi
+      ansible.builtin.get_url:
+        url: https://repo.vivaldi.com/stable/linux_signing_key.pub
+        dest: /etc/apt/keyrings/vivaldi-browser.asc
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Configura repositório APT oficial do Vivaldi
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/vivaldi.sources
+        content: |
+          Types: deb
+          URIs: https://repo.vivaldi.com/stable/deb/
+          Suites: stable
+          Components: main
+          Architectures: amd64
+          Signed-By: /etc/apt/keyrings/vivaldi-browser.asc
+        mode: '0644'
+        owner: root
+        group: root
+      register: vivaldi_repo
+
+    - name: Atualiza cache do apt se o repositório do Vivaldi foi alterado
+      ansible.builtin.apt:
+        update_cache: true
+      when: vivaldi_repo.changed
+
+    - name: Instala o navegador Vivaldi
+      ansible.builtin.apt:
+        name: vivaldi-stable
+        state: present

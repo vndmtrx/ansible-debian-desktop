@@ -28,13 +28,11 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
   - `neowofetch` (sumário visual do sistema)
 - **Flatpak & Flathub:** Suporte nativo ao Flathub integrado ao GNOME Software (`gnome-software-plugin-flatpak`, `xdg-desktop-portal-gnome`), suporte a FUSE (`libfuse2t64`), temas Adwaita/Adw-gtk3, cliente VPN **Trayscale** (`dev.deedles.Trayscale`) e utilitários (`Flatseal`, `Warehouse`, `Extension Manager`).
 
-### 2. Repositórios Upstream Oficiais & Navegadores (`01-extrepo.yaml`)
+### 2. Repositórios Upstream Oficiais (`01-extrepo.yaml`)
 - Configuração do `extrepo` para Debian Trixie habilitando os repositórios oficiais:
   - **LibreWolf:** Navegador principal focado em privacidade.
-  - **Tailscale:** Daemon de VPN mesh seguro (`tailscale` e serviço `tailscaled`).
   - **VSCodium:** Editor de código com telemetria desativada.
   - **Docker CE & HashiCorp:** Repositórios oficiais utilizados na stack de virtualização.
-- **Vivaldi Browser:** Configuração automática do repositório APT oficial da Vivaldi com chave GPG dearmorada e instalação do pacote `vivaldi-stable`.
 
 ### 3. Ambiente do Usuário & Shell (`02-usuario.yaml`)
 - **Padrão XDG & Estrutura de Trabalho:**
@@ -88,7 +86,19 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
   - Só efetua o download se o binário não estiver presente, respeitando as auto-atualizações posteriores do próprio pCloud.
   - Link simbólico em `~/.local/bin/pcloud` e atalho `.desktop` com extração do ícone oficial para o menu de aplicativos.
 
-### 9. Customização GNOME & Backup/Restore (`99-gnome-extensions.yaml`)
+### 9. Tailscale VPN (`09-tailscale.yaml`)
+- **Rede Mesh & VPN Segura:**
+  - Repositório habilitado via `extrepo`.
+  - Instalação do pacote `tailscale` e ativação imediata do daemon `tailscaled.service`.
+  - Integração com o cliente gráfico **Trayscale** via Flathub (`apps_flatpak`).
+
+### 10. Vivaldi Browser (`10-vivaldi.yaml`)
+- **Navegador Secundário Completo:**
+  - Configuração da chave GPG oficial em `/etc/apt/keyrings/vivaldi-browser.asc`.
+  - Repositório deb822 moderno em `/etc/apt/sources.list.d/vivaldi.sources`.
+  - Instalação e atualização automatizada do pacote `vivaldi-stable`.
+
+### 11. Customização GNOME & Backup/Restore (`99-gnome-extensions.yaml`)
 - **Instalação Silenciosa (`gext`):** Utiliza `gnome-extensions-cli` via backend `--filesystem`, dispensando prompts interativos na tela.
 - **12 Extensões GNOME 48:**
   - *Dash to Panel* (barra inferior unificada), *AppIndicator*, *Blur my Shell*, *Burn My Windows*, *Caffeine*, *Custom Hot Corners Extended*, *Clipboard Indicator*, *No Overview*, *Tiling Shell*, *Wallpaper Switcher*, *Window Is Ready Remover*, *Fly-Pie*.
@@ -134,6 +144,12 @@ Você pode repassar argumentos e tags diretamente pelo `./bootstrap.sh` (ou via 
 
 # Executar apenas a instalação do pCloud AppImage
 ./bootstrap.sh --tags pcloud
+
+# Executar apenas o Tailscale VPN
+./bootstrap.sh --tags tailscale
+
+# Executar apenas a instalação do Vivaldi
+./bootstrap.sh --tags vivaldi
 
 # Executar tudo, exceto virtualização
 ./bootstrap.sh --skip-tags virt

@@ -1,0 +1,30 @@
+---
+# sistema/tasks/09-tailscale.yaml
+
+- name: Instalação e configuração do Tailscale VPN
+  become: true
+  block:
+    - name: Habilita repositório Tailscale via extrepo
+      ansible.builtin.command:
+        cmd: extrepo enable tailscale
+      register: tailscale_repo
+      changed_when: tailscale_repo.rc == 0
+      failed_when: tailscale_repo.rc != 0
+      args:
+        creates: /etc/apt/sources.list.d/extrepo_tailscale.sources
+
+    - name: Atualiza cache do apt se o repositório do Tailscale foi habilitado
+      ansible.builtin.apt:
+        update_cache: true
+      when: tailscale_repo.changed
+
+    - name: Instala o pacote do Tailscale
+      ansible.builtin.apt:
+        name: tailscale
+        state: present
+
+    - name: Habilita e inicia o serviço do Tailscale
+      ansible.builtin.systemd_service:
+        name: tailscaled.service
+        state: started
+        enabled: true
