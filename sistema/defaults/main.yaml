@@ -28,7 +28,6 @@ servicos_sistema:
   - ssh.service
   - systemd-timesyncd.service
   - cron.service
-  - tailscaled.service
 
 # Aplicações de terminal (CLI moderna)
 # Usado em: sistema/tasks/00-base.yaml
