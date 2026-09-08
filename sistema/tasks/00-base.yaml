@@ -37,6 +37,18 @@
     state: present
   become: true
 
+- name: Instala utilitários de diagnóstico de hardware e sistema
+  ansible.builtin.apt:
+    name: "{{ utilitarios_hardware }}"
+    state: present
+  become: true
+
+- name: Instala ferramentas para suporte a leitor biométrico (digitais)
+  ansible.builtin.apt:
+    name: "{{ pacotes_biometria }}"
+    state: present
+  become: true
+
 - name: Habilita serviços de sistema
   ansible.builtin.systemd_service:
     name: "{{ item }}"
