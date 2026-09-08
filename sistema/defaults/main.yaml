@@ -103,6 +103,7 @@ pacotes_extrepo:
 diretorios_usuario:
   - "{{ ansible_env.HOME }}/du/dev"
   - "{{ ansible_env.HOME }}/du/conf"
+  - "{{ ansible_env.HOME }}/du/backups"
   - "{{ ansible_env.HOME }}/du/dev/tensor"
   - "{{ ansible_env.HOME }}/du/dev/github"
   - "{{ ansible_env.HOME }}/du/dev/docker-stacks"
@@ -122,6 +123,7 @@ aliases_bash:
   - 'tensor="docker run -it --rm -p 8888:8888 -v $HOME/du/dev/tensor:/tf/notebooks tensorflow/tensorflow:latest-jupyter"'
   - 'plantuml="docker run -it --rm -p 8080:8080 plantuml/plantuml-server:jetty"'
   - 'salvar-extensoes="$HOME/.local/bin/salvar-extensoes"'
+  - 'backup-seguranca="$HOME/.local/bin/backup-seguranca"'
 
 # Configurações do ASDF Core
 # Usado em: sistema/tasks/03-asdf.yaml
