@@ -37,7 +37,7 @@ print_header() {
 usage() {
     print_header
     local exit_code="${1:-1}"
-    echo -e "${BOLD}Uso:${RESET} $0 [backup | restore] [opções]"
+    echo -e "${BOLD}Uso:${RESET} $0 [backup | restore | add-keys] [opções]"
     echo ""
     echo -e "  ${CYAN}backup${RESET}              Exporta Git, SSH e chaves GPG, gerando:"
     echo -e "                      - Arquivo comprimido em .tar.bz2"
@@ -48,6 +48,8 @@ usage() {
     echo -e "  ${CYAN}restore [ARQUIVO]${RESET}   Restaura configurações e chaves."
     echo -e "                      Por padrão, seleciona o .tar.bz2 mais recente em ${DIM}${BACKUP_BASE_DIR}${RESET}."
     echo -e "                      Valida hash, assinatura e exibe relatório de alterações antes de confirmar."
+    echo ""
+    echo -e "  ${CYAN}add-keys${RESET}            Carrega automaticamente todas as chaves privadas de ~/.ssh no ssh-agent."
     echo ""
     exit "${exit_code}"
 }
@@ -431,8 +433,72 @@ run_restore() {
         fi
     fi
 
+    # 6. Carregamento de chaves no ssh-agent
+    if [[ -d "${HOME}/.ssh" ]]; then
+        echo ""
+        read -r -p "Deseja carregar as chaves privadas no ssh-agent agora (ssh-add)? [S/n]: " add_keys_confirm
+        if [[ -z "${add_keys_confirm}" || "${add_keys_confirm}" =~ ^[sS]$ || "${add_keys_confirm}" =~ ^[yY]$ ]]; then
+            echo ""
+            carregar_chaves_ssh
+        fi
+    fi
+
     echo ""
     echo -e "${BOLD}${GREEN}🎉 Restauração concluída com sucesso!${RESET}"
+}
+
+carregar_chaves_ssh() {
+    echo -e "  ${BOLD}${BLUE}🔑 Importando chaves privadas no ssh-agent...${RESET}"
+
+    # Garante que o ssh-agent está acessível
+    local agent_started=0
+    if [[ -z "${SSH_AUTH_SOCK:-}" ]]; then
+        echo -e "    ${YELLOW}ssh-agent não detectado na sessão atual. Inicializando agente...${RESET}"
+        eval "$(ssh-agent -s)" >/dev/null
+        agent_started=1
+    elif ! ssh-add -l &>/dev/null && [[ $? -eq 2 ]]; then
+        echo -e "    ${YELLOW}Não foi possível conectar ao ssh-agent. Inicializando novo agente...${RESET}"
+        eval "$(ssh-agent -s)" >/dev/null
+        agent_started=1
+    fi
+
+    # Localiza chaves privadas SSH em ~/.ssh (ignora .pub e chaves PGP .asc)
+    local private_keys=()
+    while IFS= read -r -d '' keyfile; do
+        if ! [[ "${keyfile}" =~ \.pub$ ]] && grep -q "PRIVATE KEY" "${keyfile}" 2>/dev/null && ! grep -q "PGP PRIVATE KEY" "${keyfile}" 2>/dev/null; then
+            private_keys+=("${keyfile}")
+        fi
+    done < <(find "${HOME}/.ssh" -maxdepth 1 -type f -print0 2>/dev/null | sort -z)
+
+    if [[ ${#private_keys[@]} -eq 0 ]]; then
+        echo -e "    ${DIM}Nenhuma chave privada SSH encontrada em ~/.ssh.${RESET}"
+        return 0
+    fi
+
+    echo -e "    Encontrada(s) ${BOLD}${#private_keys[@]}${RESET} chave(s) privada(s):"
+    for k in "${private_keys[@]}"; do
+        echo -e "      ${CYAN}•${RESET} ~/.ssh/$(basename "${k}")"
+    done
+    echo ""
+
+    for key in "${private_keys[@]}"; do
+        local key_name
+        key_name=$(basename "${key}")
+        echo -e "    🔑 Adicionando ${BOLD}~/.ssh/${key_name}${RESET}:"
+        if ! ssh-add "${key}"; then
+            echo -e "      ${YELLOW}⚠️  Não foi possível adicionar ~/.ssh/${key_name} (ou operação cancelada).${RESET}"
+        fi
+    done
+
+    echo ""
+    echo -e "    ${BOLD}Chaves atualmente ativas no agente:${RESET}"
+    ssh-add -l 2>/dev/null || echo -e "      ${DIM}Nenhuma chave carregada.${RESET}"
+
+    if [[ "${agent_started}" -eq 1 ]]; then
+        echo ""
+        echo -e "    ${YELLOW}💡 Dica:${RESET} Para manter o ssh-agent persistido no seu terminal atual, execute:"
+        echo -e "       ${BOLD}eval \"\$(ssh-agent -s)\"${RESET}"
+    fi
 }
 
 # Roteamento dos comandos
@@ -443,6 +509,10 @@ case "${1:-}" in
     restore)
         shift
         run_restore "${1:-}"
+        ;;
+    add-keys|load-keys|ssh-add)
+        print_header
+        carregar_chaves_ssh
         ;;
     -h|--help|help)
         usage 0
