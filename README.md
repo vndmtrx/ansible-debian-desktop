@@ -53,7 +53,8 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
 - **Backup & Restauração de Segurança (`backup.sh` / `backup-seguranca`):**
   - Utilitário dedicado para exportar e restaurar credenciais e configurações de **Git, SSH e GnuPG**:
     - `./backup.sh backup`: Coleta `~/.gitconfig`, `~/.ssh/` e exporta chaves e trust do GPG, gerando o pacote `YYYYMMDD_HHMM.tar.bz2` diretamente em `~/du/backups/` (permissão `0700`), acompanhado de hash `*.sha256` e assinatura digital `*.asc`.
-    - `./backup.sh restore [arquivo]`: Restaura a partir do arquivo mais recente em `~/du/backups/` (ou arquivo/caminho informado), valida integridade SHA-256 e assinatura GPG, inspeciona substituições de arquivos existentes (`~/.gitconfig`, `~/.ssh/*`) e solicita confirmação explícita antes de reaplicar as permissões seguras (`0700`, `0600`, `0644`).
+    - `./backup.sh restore [arquivo]`: Restaura a partir do arquivo mais recente em `~/du/backups/` (ou arquivo/caminho informado), valida integridade SHA-256 e assinatura GPG, inspeciona substituições de arquivos existentes (`~/.gitconfig`, `~/.ssh/*`), solicita confirmação explícita, reaplica as permissões seguras (`0700`, `0600`, `0644`) e oferece carregar automaticamente as chaves no `ssh-agent`.
+    - `./backup.sh add-keys`: Identifica e carrega todas as chaves privadas SSH encontradas em `~/.ssh/` no `ssh-agent` via `ssh-add` (iniciando o agente se necessário).
 - **Aliases de Produtividade & IA:**
   - Atalhos de terminal (`ls="eza"`, `ts="tspin"`, `jc="journalctl | tspin"`, etc.).
   - **TensorFlow com Docker (`tensor`):** Sobe um servidor Jupyter com TensorFlow oficial mapeando `~/du/dev/tensor` na porta 8888 em primeiro plano (`-it --rm`) sem sujar o Python do host.
