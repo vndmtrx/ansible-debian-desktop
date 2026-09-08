@@ -26,6 +26,16 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
   - `gdu` (analisador de uso de disco)
   - `mtr-tiny` (diagnóstico de rotas e rede em tempo real)
   - `neowofetch` (sumário visual do sistema)
+- **Inspeção de Hardware & Diagnóstico:**
+  - `usbutils` (fornece `lsusb` para listagem e inspeção de barramento USB)
+  - `pciutils` (fornece `lspci` para barramento PCI)
+  - `lshw` e `dmidecode` (inventário detalhado de hardware, BIOS, placas e memórias)
+  - `lm-sensors` (temperaturas e sensores)
+  - `smartmontools` (`smartctl` para telemetria e integridade de discos/SSDs)
+  - `psmisc` (`killall`, `fuser`, `pstree`)
+  - `curl` e `wget` (ferramentas padrão de download e requisições via terminal)
+- **Suporte a Biometria (Impressão Digital):**
+  - Instalação de `fprintd` e `libpam-fprintd` para integração nativa com leitores biométricos compatíveis com a `libfprint`, disponibilizando o cadastro de digitais diretamente nas configurações de usuários do GNOME.
 - **Flatpak & Flathub:** Suporte nativo ao Flathub integrado ao GNOME Software (`gnome-software-plugin-flatpak`, `xdg-desktop-portal-gnome`), suporte a FUSE (`libfuse2t64`), temas Adwaita/Adw-gtk3, cliente VPN **Trayscale** (`dev.deedles.Trayscale`) e utilitários (`Flatseal`, `Warehouse`, `Extension Manager`).
 
 ### 2. Repositórios Upstream Oficiais (`01-extrepo.yaml`)

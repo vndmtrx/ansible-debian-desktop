@@ -21,6 +21,25 @@ pacotes_sistema:
   - xdg-desktop-portal-gnome
   - libfuse2t64
 
+# Utilitários de diagnóstico de hardware e inspeção do sistema
+# Usado em: sistema/tasks/00-base.yaml
+utilitarios_hardware:
+  - usbutils
+  - pciutils
+  - lshw
+  - dmidecode
+  - lm-sensors
+  - smartmontools
+  - psmisc
+  - curl
+  - wget
+
+# Ferramentas para suporte a leitor biométrico (impressão digital)
+# Usado em: sistema/tasks/00-base.yaml
+pacotes_biometria:
+  - fprintd
+  - libpam-fprintd
+
 # Lista de serviços do sistema que devem estar ativos
 # Usado em: sistema/tasks/00-base.yaml
 servicos_sistema:
