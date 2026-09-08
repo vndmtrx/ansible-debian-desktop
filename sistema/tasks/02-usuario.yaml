@@ -57,6 +57,21 @@
     mode: '0755'
   become: false
 
+- name: Garante permissões restritas no diretório de backups
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/du/backups"
+    state: directory
+    mode: '0700'
+  become: false
+
+- name: Cria link para utilitário de backup e restore de segurança
+  ansible.builtin.file:
+    src: "{{ playbook_dir }}/backup.sh"
+    dest: "{{ ansible_env.HOME }}/.local/bin/backup-seguranca"
+    state: link
+    force: true
+  become: false
+
 - name: Configura aliases para Bash
   become: false
   block:
