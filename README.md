@@ -47,9 +47,13 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
 ### 3. Ambiente do Usuário & Shell (`02-usuario.yaml`)
 - **Padrão XDG & Estrutura de Trabalho:**
   - Binários locais consolidados em `~/.local/bin` (integrado ao `$PATH`).
-  - Criação automática dos diretórios de trabalho: `~/du/dev`, `~/du/conf`, `~/du/dev/tensor`, `~/du/dev/github` e `~/du/dev/docker-stacks`.
+  - Criação automática dos diretórios de trabalho: `~/du/dev`, `~/du/conf`, `~/du/backups`, `~/du/dev/tensor`, `~/du/dev/github` e `~/du/dev/docker-stacks`.
 - **Tilix:** Terminal em ladrilhos com suporte a integração VTE (`/etc/profile.d/vte.sh`).
 - **Backup de Extensões & GNOME (`salvar-extensoes`):** Comando utilitário que exporta as configurações ativas do GNOME e de todas as extensões para `~/du/conf/extensoes_YYYYMMDDHHMMSS.dconf`.
+- **Backup & Restauração de Segurança (`backup.sh` / `backup-seguranca`):**
+  - Utilitário dedicado para exportar e restaurar credenciais e configurações de **Git, SSH e GnuPG**:
+    - `./backup.sh backup`: Coleta `~/.gitconfig`, `~/.ssh/` e exporta chaves e trust do GPG, gerando o pacote `YYYYMMDD_HHMM.tar.bz2` diretamente em `~/du/backups/` (permissão `0700`), acompanhado de hash `*.sha256` e assinatura digital `*.asc`.
+    - `./backup.sh restore [arquivo]`: Restaura a partir do arquivo mais recente em `~/du/backups/` (ou arquivo/caminho informado), valida integridade SHA-256 e assinatura GPG, inspeciona substituições de arquivos existentes (`~/.gitconfig`, `~/.ssh/*`) e solicita confirmação explícita antes de reaplicar as permissões seguras (`0700`, `0600`, `0644`).
 - **Aliases de Produtividade & IA:**
   - Atalhos de terminal (`ls="eza"`, `ts="tspin"`, `jc="journalctl | tspin"`, etc.).
   - **TensorFlow com Docker (`tensor`):** Sobe um servidor Jupyter com TensorFlow oficial mapeando `~/du/dev/tensor` na porta 8888 em primeiro plano (`-it --rm`) sem sujar o Python do host.
