@@ -14,7 +14,11 @@
     marker: "# {mark} TILIX CONFIGURATION"
     block: |
       if [ $TILIX_ID ] || [ $VTE_VERSION ]; then
-        source /etc/profile.d/vte.sh
+        if [ -f /etc/profile.d/vte.sh ]; then
+          source /etc/profile.d/vte.sh
+        elif [ -f /etc/profile.d/vte-2.91.sh ]; then
+          source /etc/profile.d/vte-2.91.sh
+        fi
       fi
     state: present
   become: false
