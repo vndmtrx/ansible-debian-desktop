@@ -48,7 +48,7 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
 - **Padrão XDG & Estrutura de Trabalho:**
   - Binários locais consolidados em `~/.local/bin` (integrado ao `$PATH`).
   - Criação automática dos diretórios de trabalho: `~/du/dev`, `~/du/conf`, `~/du/backups`, `~/du/dev/tensor`, `~/du/dev/github` e `~/du/dev/docker-stacks`.
-- **Tilix:** Terminal em ladrilhos com suporte a integração VTE (`/etc/profile.d/vte.sh`).
+- **Tilix:** Terminal em mosaico com suporte à integração VTE (`/etc/profile.d/vte-2.91.sh` e link `/etc/profile.d/vte.sh`).
 - **Backup de Extensões & GNOME (`salvar-extensoes`):** Comando utilitário que exporta as configurações ativas do GNOME e de todas as extensões para `~/du/conf/extensoes_YYYYMMDDHHMMSS.dconf`.
 - **Backup & Restauração de Segurança (`backup.sh` / `backup-seguranca`):**
   - Utilitário dedicado para exportar e restaurar credenciais e configurações de **Git, SSH e GnuPG**:
