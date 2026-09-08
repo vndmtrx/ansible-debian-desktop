@@ -75,6 +75,13 @@
     state: present
   become: true
 
+- name: Cria link simbólico para script do VTE do Tilix
+  ansible.builtin.file:
+    src: /etc/profile.d/vte-2.91.sh
+    dest: /etc/profile.d/vte.sh
+    state: link
+  become: true
+
 - name: Instala repositório Flathub
   community.general.flatpak_remote:
     name: flathub
