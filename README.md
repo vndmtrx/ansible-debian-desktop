@@ -42,7 +42,8 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
 - **Backup de Extensões & GNOME (`salvar-extensoes`):** Comando utilitário que exporta as configurações ativas do GNOME e de todas as extensões para `~/du/conf/extensoes_YYYYMMDDHHMMSS.dconf`.
 - **Aliases de Produtividade & IA:**
   - Atalhos de terminal (`ls="eza"`, `ts="tspin"`, `jc="journalctl | tspin"`, etc.).
-  - **TensorFlow com Docker (`tensor`):** Sobe um servidor Jupyter com TensorFlow oficial mapeando `~/du/dev/tensor` diretamente na porta 8888 sem sujar o Python do host.
+  - **TensorFlow com Docker (`tensor`):** Sobe um servidor Jupyter com TensorFlow oficial mapeando `~/du/dev/tensor` na porta 8888 em primeiro plano (`-it --rm`) sem sujar o Python do host.
+  - **PlantUML com Docker (`plantuml`):** Sobe o servidor oficial Jetty do PlantUML na porta 8080 em primeiro plano (`-it --rm`), pronto para renderizar diagramas e destruindo o contêiner ao encerrar.
     > [!TIP]
     > **Aceleração por Hardware (GPU) no Docker:**
     > O alias padrão executa em **CPU**. Caso queira rodar em uma máquina com GPU dedicada (ex: PC de trabalho), os requisitos para cada fabricante são:

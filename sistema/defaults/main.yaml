@@ -101,6 +101,7 @@ aliases_bash:
   - 'mtr="mtr -t"'
   - 'rebootbios="sudo systemctl reboot --firmware"'
   - 'tensor="docker run -it --rm -p 8888:8888 -v $HOME/du/dev/tensor:/tf/notebooks tensorflow/tensorflow:latest-jupyter"'
+  - 'plantuml="docker run -it --rm -p 8080:8080 plantuml/plantuml-server:jetty"'
   - 'salvar-extensoes="$HOME/.local/bin/salvar-extensoes"'
 
 # Configurações do ASDF Core
