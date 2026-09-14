@@ -40,6 +40,35 @@
   loop: "{{ diretorios_usuario }}"
   become: false
 
+- name: Garante diretório do GNOME Keyring com permissões restritas
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.local/share/keyrings"
+    state: directory
+    mode: '0700'
+  become: false
+
+- name: Inicializa chaveiro login do GNOME Keyring sem senha
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/.local/share/keyrings/login.keyring"
+    content: |
+      [keyring]
+      display-name=login
+      ctime=0
+      mtime=0
+      lock-on-idle=false
+      lock-after=false
+    force: false
+    mode: '0600'
+  become: false
+
+- name: Define chaveiro login como padrão no GNOME Keyring
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/.local/share/keyrings/default"
+    content: "login\n"
+    force: false
+    mode: '0600'
+  become: false
+
 - name: Cria comando utilitário para backup de configurações das extensões e GNOME
   ansible.builtin.copy:
     dest: "{{ ansible_env.HOME }}/.local/bin/salvar-extensoes"

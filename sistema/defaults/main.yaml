@@ -24,6 +24,8 @@ pacotes_sistema:
   - gnome-software-plugin-flatpak
   - xdg-desktop-portal-gnome
   - libfuse2t64
+  - gnome-keyring
+  - libsecret-tools
 
 # Utilitários de diagnóstico de hardware e inspeção do sistema
 # Usado em: sistema/tasks/00-base.yaml
@@ -79,6 +81,7 @@ apps_gui:
   - tilix
   - chromium
   - gufw
+  - seahorse
 
 # Aplicações Flatpak instaladas via Flathub
 # Usado em: sistema/tasks/00-base.yaml
