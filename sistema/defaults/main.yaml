@@ -9,6 +9,10 @@
 # Usado em: sistema/tasks/00-base.yaml
 atualiza_sistema: false
 
+# Controla se o firmware da máquina será atualizado via fwupd (LVFS)
+# Usado em: sistema/tasks/00-base.yaml
+atualiza_firmware: false
+
 # Pacotes essenciais do sistema operacional
 # Usado em: sistema/tasks/00-base.yaml
 pacotes_sistema:
@@ -24,6 +28,12 @@ pacotes_sistema:
 # Utilitários de diagnóstico de hardware e inspeção do sistema
 # Usado em: sistema/tasks/00-base.yaml
 utilitarios_hardware:
+  - fwupd
+  - parted
+  - cryptsetup
+  - zram-tools
+  - nvme-cli
+  - hdparm
   - usbutils
   - pciutils
   - lshw
@@ -47,6 +57,7 @@ servicos_sistema:
   - ssh.service
   - systemd-timesyncd.service
   - cron.service
+  - fstrim.timer
 
 # Aplicações de terminal (CLI moderna)
 # Usado em: sistema/tasks/00-base.yaml

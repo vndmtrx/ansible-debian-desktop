@@ -43,6 +43,60 @@
     state: present
   become: true
 
+- name: Identifica dispositivo montado em /boot/efi
+  ansible.builtin.set_fact:
+    efi_device_path: "{{ (ansible_mounts | selectattr('mount', 'equalto', '/boot/efi') | map(attribute='device') | first | default('')) }}"
+
+- name: Gerenciamento da flag ESP na partição EFI
+  when: efi_device_path != ''
+  block:
+    - name: Extrai disco base e número da partição EFI
+      ansible.builtin.set_fact:
+        efi_disk: "{{ efi_device_path | regex_replace('p?[0-9]+$', '') }}"
+        efi_part_num: "{{ efi_device_path | regex_search('[0-9]+$') | int }}"
+
+    - name: Garante que a partição EFI possua a flag esp ativa
+      community.general.parted:
+        device: "{{ efi_disk }}"
+        number: "{{ efi_part_num }}"
+        flags:
+          - esp
+        state: present
+      register: efi_flag_res
+      become: true
+
+    - name: Recarrega subsistema de blocos do udev e reinicia fwupd se a flag foi alterada
+      when: efi_flag_res.changed
+      become: true
+      block:
+        - name: Notifica subsistema de blocos do udev
+          ansible.builtin.command: udevadm trigger --subsystem-match=block
+          changed_when: true
+
+        - name: Reinicia serviço fwupd
+          ansible.builtin.systemd_service:
+            name: fwupd
+            state: restarted
+
+- name: Atualiza metadados do fwupd (LVFS)
+  ansible.builtin.command: fwupdmgr refresh --force
+  changed_when: false
+  become: true
+  when: atualiza_firmware | default(false) | bool
+
+- name: Aplica atualizações de firmware pendentes
+  ansible.builtin.command: fwupdmgr update -y
+  register: fwupd_result
+  failed_when:
+    - fwupd_result.rc != 0
+    - "'No updatable devices' not in fwupd_result.stderr"
+    - "'nothing to do' not in fwupd_result.stderr | lower"
+    - "'no updates' not in fwupd_result.stdout | lower"
+  changed_when:
+    - "'Successfully installed firmware' in fwupd_result.stdout or 'An update requires a reboot' in fwupd_result.stdout"
+  become: true
+  when: atualiza_firmware | default(false) | bool
+
 - name: Instala ferramentas para suporte a leitor biométrico (digitais)
   ansible.builtin.apt:
     name: "{{ pacotes_biometria }}"
