@@ -16,7 +16,7 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
 - **Execução Direta:** Invoca o playbook com `--ask-become-pass` e suporte a repasse de flags CLI (`"$@"`).
 
 ### 1. Base do Sistema & Segurança (`00-base.yaml`)
-- **Fuso Horário & NTP:** `America/Sao_Paulo` com sincronização automática via `systemd-timesyncd`.
+- **Fuso Horário, NTP & SSD TRIM:** `America/Sao_Paulo` com sincronização automática via `systemd-timesyncd` e manutenção periódica de descarte de blocos SSD via `fstrim.timer`.
 - **Firewall & SSH:** Firewall UFW ativo com regras para OpenSSH e interface gráfica (`gufw`).
 - **Terminal & CLI Moderna:**
   - `eza` (substituto moderno do `ls` com suporte a git e ícones)
@@ -26,7 +26,13 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
   - `gdu` (analisador de uso de disco)
   - `mtr-tiny` (diagnóstico de rotas e rede em tempo real)
   - `neowofetch` (sumário visual do sistema)
-- **Inspeção de Hardware & Diagnóstico:**
+- **Inspeção de Hardware, Firmware & Diagnóstico:**
+  - `fwupd` (Linux Vendor Firmware Service / `fwupdmgr` para detecção e atualização de firmware de UEFI, SSDs NVMe e periféricos)
+  - `parted` (manipulação, expansão online e inspeção de tabelas de partição GPT/MBR)
+  - `cryptsetup` (utilitários de gerenciamento de volumes criptografados LUKS e dm-crypt)
+  - `zram-tools` (gerenciamento automático de swap dinâmico comprimido na memória RAM via `zramswap.service`)
+  - `nvme-cli` (ferramenta oficial de telemetria SMART, logs de desgaste e diagnóstico de SSDs NVMe)
+  - `hdparm` (medição de taxa de leitura e benchmark de desempenho de I/O em discos e mappers)
   - `usbutils` (fornece `lsusb` para listagem e inspeção de barramento USB)
   - `pciutils` (fornece `lspci` para barramento PCI)
   - `lshw` e `dmidecode` (inventário detalhado de hardware, BIOS, placas e memórias)
@@ -182,6 +188,7 @@ Alinhado às melhores práticas do Ansible (níveis de precedência):
 | Variável | Descrição | Padrão |
 | :--- | :--- | :--- |
 | `atualiza_sistema` | Executa `apt upgrade` completo do sistema | `false` |
+| `atualiza_firmware` | Executa atualização de firmware via `fwupdmgr` (LVFS) | `false` |
 | `versao_java` | Identificador do Java no SDKMAN! | `'26-tem'` |
 | `versao_maven` | Versão do Apache Maven no SDKMAN! | `'3.9.16'` |
 | `versao_erlang` | Versão do Erlang/OTP compilada via ASDF | `'29.0.6'` |
