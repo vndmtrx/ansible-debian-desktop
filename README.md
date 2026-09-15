@@ -189,18 +189,41 @@ chmod +x setup-ventoy.sh
 
 O script:
 1. Monta a partição de dados do Ventoy de forma idempotente.
-2. Injeta as configurações declarativas do Calamares (`fstab.conf`, `partition.conf`, `shellprocess-ansible.conf`, etc.).
-3. Versiona arquivos modificados (`.old.YYMMDDHHMMSS`) comparando hash MD5 para evitar desgaste desnecessário da mídia Flash.
+2. Sincroniza a pasta modular [`ventoy/`](ventoy/) para o pendrive (`/scripts/`), comparando hash MD5:
+   ```text
+   /mnt/ventoy/scripts/
+   ├── apply-calamares.sh      <-- Injetor modular (compara hash MD5)
+   ├── post-install.sh         <-- Otimizador pós-instalação idempotente
+   ├── modules/                <-- Módulos declarativos do Calamares
+   │   ├── fstab.conf
+   │   ├── partition.conf
+   │   └── users.conf
+   └── ansible-debian-desktop/ <-- Clone local do repositório
+   ```
+3. Versiona arquivos modificados (`.old.YYMMDDHHMMSS`) para evitar desgaste desnecessário da mídia Flash.
 4. Clona/atualiza o repositório Ansible para a mídia.
 5. Inspeciona `~/du/backups/` e copia com segurança os backups criptografados (`.tar.bz2.gpg`, `.sha256`, `.asc`) para `/mnt/ventoy/backup/` sem sobrescrever nada indevido.
 
-No ambiente Debian Live, monte a partição via loop device (para desacoplar o lock do Ventoy) e execute o injetor:
-```bash
-sudo mkdir -p /mnt/ventoy
-LOOP_DEV=$(sudo losetup -r -f --show /dev/sda1 2>/dev/null || echo "/dev/sda1")
-sudo mount -o ro "$LOOP_DEV" /mnt/ventoy
+No ambiente Debian Live, crie o loop desacoplado do Ventoy e execute o injetor:
 
-sudo /mnt/ventoy/scripts/apply-calamares.sh
+```bash
+# 1. Cria o loop device desacoplado (ele imprimirá o dispositivo criado, ex: /dev/loop5)
+sudo losetup -r -f --show /dev/sda1
+
+# 2. Monta em ~/ventoy e roda o injetor (substitua /dev/loopX pelo dispositivo exibido acima)
+mkdir -p ~/ventoy
+sudo mount -o ro /dev/loopX ~/ventoy
+sudo ~/ventoy/scripts/apply-calamares.sh
+```
+
+*(Ou em uma única linha rápida):*
+```bash
+mkdir -p ~/ventoy && sudo mount -o ro $(sudo losetup -r -f --show /dev/sda1) ~/ventoy && sudo ~/ventoy/scripts/apply-calamares.sh
+```
+
+Após concluir a instalação gráfica pelo Calamares, o `apply-calamares.sh` aplica as otimizações do `post-install.sh` automaticamente no target. Caso prefira aplicar diretamente no primeiro boot do sistema recém-instalado:
+```bash
+sudo ./post-install.sh
 ```
 
 ---
