@@ -40,7 +40,27 @@ if [ -d "$SCRIPT_DIR/modules" ]; then
   done
 fi
 
-# 2. Iniciar o Calamares
+# 2. Garantir disponibilidade do binário do shellprocess no Debian Live
+sudo mkdir -p /usr/lib/calamares/modules
+if [ -d "/usr/lib/x86_64-linux-gnu/calamares/modules/shellprocess" ] && [ ! -e "/usr/lib/calamares/modules/shellprocess" ]; then
+  sudo ln -sf "/usr/lib/x86_64-linux-gnu/calamares/modules/shellprocess" "/usr/lib/calamares/modules/shellprocess"
+fi
+
+# 3. Injetar instâncias do shellprocess no settings.conf de forma declarativa
+SETTINGS_CONF="/etc/calamares/settings.conf"
+if [ -f "$SETTINGS_CONF" ]; then
+  if ! grep -q "shellprocess@grubcrypt" "$SETTINGS_CONF"; then
+    echo "  [+] Injetando shellprocess@grubcrypt após fstab no settings.conf..."
+    sudo sed -i '/- fstab/a \  - shellprocess@grubcrypt' "$SETTINGS_CONF"
+  fi
+
+  if ! grep -q "shellprocess@initramfs" "$SETTINGS_CONF"; then
+    echo "  [+] Injetando shellprocess@initramfs após bootloader no settings.conf..."
+    sudo sed -i '/- bootloader/a \  - shellprocess@initramfs' "$SETTINGS_CONF"
+  fi
+fi
+
+# 4. Iniciar o Calamares
 echo "==> Iniciando Calamares em modo verbose..."
 sudo calamares -d
 
