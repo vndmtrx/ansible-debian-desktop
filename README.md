@@ -236,8 +236,9 @@ O **[`post-install.sh`](post-install.sh)** aplica de forma 100% idempotente:
 7. **Initramfs Otimizado:** Define `RESUME=none` e regenera a imagem.
 8. **Sysctl NVMe:** Configura `/etc/sysctl.d/99-nvme-performance.conf` (`vm.swappiness=100`, etc.).
 9. **Scheduler NVMe:** Aplica regra udev com scheduler `none`.
-10. **Swap comprimido em RAM (zram):** Instala `zram-tools` com compressão `zstd`, substituindo o swap em disco por um dispositivo de bloco comprimido na memória RAM.
-11. **Bootstrap Mínimo:** Instala `pipx`, `git`, `curl` e `sudo`.
+10. **Otimização de Userspace:** Mascara `plymouth-quit-wait.service` (elimina até 21s de atraso no display manager) e desativa `NetworkManager-wait-online.service` (elimina 3-5s de retenção desnecessária).
+11. **Swap comprimido em RAM (zram):** Instala `zram-tools` com compressão `zstd`, substituindo o swap em disco por um dispositivo de bloco comprimido na memória RAM.
+12. **Bootstrap Mínimo:** Instala `pipx`, `git`, `curl` e `sudo`.
 
 ---
 
