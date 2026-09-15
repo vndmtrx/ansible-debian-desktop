@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # apply-calamares.sh: Injeta configurações modulares no Calamares do Debian Live
-# Compara hash MD5 antes de substituir e executa o post-install no target
+# Compara hash MD5 antes de substituir e prepara o ambiente de instalação
 # ==============================================================================
 set -euo pipefail
 
@@ -74,7 +74,7 @@ fi
 echo "==> Iniciando Calamares em modo verbose..."
 sudo calamares -d
 
-# 5. Hook pós-instalação: Copiar repositório para o usuário no sistema instalado
+# 5. Hook pós-instalação: Copiar repositório Ansible e Backups para o usuário no sistema instalado
 TARGET_ROOT=$(findmnt -no TARGET /dev/mapper/luks-* 2>/dev/null | grep -E '^/tmp/' | head -n 1 || true)
 if [ -z "$TARGET_ROOT" ]; then
   TARGET_ROOT=$(findmnt -no TARGET -T /target 2>/dev/null || true)
@@ -83,14 +83,41 @@ fi
 if [ -n "$TARGET_ROOT" ] && [ -d "$TARGET_ROOT/etc" ]; then
   TARGET_USER=$(find "$TARGET_ROOT/home" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | grep -v 'lost+found' | head -n 1 || true)
   if [ -n "$TARGET_USER" ]; then
-    echo "==> Copiando repositório Ansible para o usuário $TARGET_USER no sistema instalado..."
-    USER_DEST="$TARGET_ROOT/home/$TARGET_USER/du/dev/github"
-    mkdir -p "$USER_DEST"
-    if [ -d "$VENTOY_DIR/scripts/ansible-debian-desktop" ]; then
-      cp -r "$VENTOY_DIR/scripts/ansible-debian-desktop" "$USER_DEST/"
-      chmod +x "$USER_DEST/ansible-debian-desktop/"*.sh 2>/dev/null || true
-      chown -R 1000:1000 "$TARGET_ROOT/home/$TARGET_USER/du" 2>/dev/null || true
+    USER_HOME="$TARGET_ROOT/home/$TARGET_USER"
+    USER_DEV="$USER_HOME/du/dev/github"
+    USER_BACKUP="$USER_HOME/du/backups"
+    mkdir -p "$USER_DEV" "$USER_BACKUP"
+
+    # Localizar repositório Ansible
+    REPO_SRC=""
+    for candidate in "$SCRIPT_DIR/ansible-debian-desktop" "$VENTOY_DIR/scripts/ansible-debian-desktop" "/opt/ventoy-scripts/ansible-debian-desktop"; do
+      if [ -d "$candidate" ]; then
+        REPO_SRC="$candidate"
+        break
+      fi
+    done
+
+    if [ -n "$REPO_SRC" ]; then
+      echo "==> Copiando repositório Ansible para $USER_DEV..."
+      cp -r "$REPO_SRC" "$USER_DEV/"
+      chmod +x "$USER_DEV/ansible-debian-desktop/"*.sh 2>/dev/null || true
     fi
+
+    # Localizar backups
+    BACKUP_SRC=""
+    for candidate in "$SCRIPT_DIR/backup" "$VENTOY_DIR/backup" "/opt/ventoy-scripts/backup"; do
+      if [ -d "$candidate" ] && [ "$(ls -A "$candidate" 2>/dev/null)" ]; then
+        BACKUP_SRC="$candidate"
+        break
+      fi
+    done
+
+    if [ -n "$BACKUP_SRC" ]; then
+      echo "==> Copiando backups criptografados para $USER_BACKUP..."
+      cp -p "$BACKUP_SRC"/* "$USER_BACKUP/" 2>/dev/null || true
+    fi
+
+    chown -R 1000:1000 "$USER_HOME/du" 2>/dev/null || true
   fi
 fi
 
