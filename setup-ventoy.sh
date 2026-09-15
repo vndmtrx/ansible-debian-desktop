@@ -5,9 +5,11 @@
 # ==============================================================================
 set -euo pipefail
 
-echo "==> Montando partição de dados do Ventoy (/dev/sda1)..."
+echo "==> Verificando montagem da partição de dados do Ventoy (/dev/sda1)..."
 sudo mkdir -p /mnt/ventoy
-sudo mount /dev/sda1 /mnt/ventoy 2>/dev/null || true
+if ! mountpoint -q /mnt/ventoy; then
+  sudo mount /dev/sda1 /mnt/ventoy
+fi
 
 echo "==> Criando árvore de diretórios..."
 sudo mkdir -p /mnt/ventoy/scripts/calamares/modules
@@ -21,7 +23,9 @@ set -euo pipefail
 
 VENTOY_DEV=$(blkid -L Ventoy || echo "/dev/disk/by-label/Ventoy")
 mkdir -p /mnt/ventoy
-mount "$VENTOY_DEV" /mnt/ventoy 2>/dev/null || true
+if ! mountpoint -q /mnt/ventoy; then
+  mount "$VENTOY_DEV" /mnt/ventoy 2>/dev/null || true
+fi
 
 echo "Injetando configurações customizadas no Debian Live..."
 sudo cp -r /mnt/ventoy/scripts/calamares/modules/* /etc/calamares/modules/
@@ -40,6 +44,9 @@ sudo tee /mnt/ventoy/scripts/calamares/settings.conf > /dev/null << 'EOF'
 modules-search: [ local, /usr/lib/x86_64-linux-gnu/calamares/modules ]
 
 instances:
+  - id:       ansible_copy
+    module:   shellprocess
+    config:   shellprocess-ansible-copy.conf
   - id:       ansible
     module:   shellprocess
     config:   shellprocess-ansible.conf
@@ -64,6 +71,7 @@ sequence:
       - users
       - networkcfg
       - hwclock
+      - shellprocess@ansible_copy
       - shellprocess@ansible
       - initramfs
       - grubcfg
@@ -164,6 +172,25 @@ btrfsSubvolumes:
 EOF
 
 # -------------------------------------------------------------------------
+# Calamares: shellprocess-ansible-copy.conf (Executa FORA do chroot)
+# -------------------------------------------------------------------------
+sudo tee /mnt/ventoy/scripts/calamares/modules/shellprocess-ansible-copy.conf > /dev/null << 'EOF'
+---
+dontChroot: true
+timeout: 120
+script:
+  - name: "Copiar ansible-debian-desktop da mídia Ventoy para o sistema instalado"
+    command: |
+      TARGET_USER="${USER:-eu}"
+      DEST_DIR="@@ROOT@@/home/$TARGET_USER/du/dev/github"
+      mkdir -p "$DEST_DIR"
+      if [ -d /mnt/ventoy/scripts/ansible-debian-desktop ]; then
+        cp -r /mnt/ventoy/scripts/ansible-debian-desktop "$DEST_DIR/"
+        chmod +x "$DEST_DIR/ansible-debian-desktop/bootstrap.sh" 2>/dev/null || true
+      fi
+EOF
+
+# -------------------------------------------------------------------------
 # Calamares: shellprocess-ansible.conf (Hooks de Baixo Nível no chroot)
 # -------------------------------------------------------------------------
 sudo tee /mnt/ventoy/scripts/calamares/modules/shellprocess-ansible.conf > /dev/null << 'EOF'
@@ -247,22 +274,18 @@ script:
         parted -s "$DISK" set "$PARTNUM" esp on
       fi
 
-  # 11. Copiar o repositório Ansible do pendrive para ~/du/dev/github/
-  - name: "Copiar ansible-debian-desktop para o home"
+  # 11. Ajustar permissões do repositório copiado
+  - name: "Ajustar permissões do repositório Ansible"
     command: |
-      TARGET_USER=$(id -nu 1000)
-      DEST_DIR="/home/$TARGET_USER/du/dev/github"
-      mkdir -p "$DEST_DIR"
-      if [ -d /mnt/ventoy/scripts/ansible-debian-desktop ]; then
-        cp -r /mnt/ventoy/scripts/ansible-debian-desktop "$DEST_DIR/"
-        chmod +x "$DEST_DIR/ansible-debian-desktop/bootstrap.sh"
+      TARGET_USER=$(id -nu 1000 2>/dev/null || echo "eu")
+      if [ -d "/home/$TARGET_USER/du" ]; then
+        chown -R 1000:1000 "/home/$TARGET_USER/du"
       fi
-      chown -R 1000:1000 "/home/$TARGET_USER/du"
 
   # 12. Gerar chave SSH id_ed25519 com o e-mail solicitado
   - name: "Gerar novo par de chaves SSH id_ed25519"
     command: |
-      TARGET_USER=$(id -nu 1000)
+      TARGET_USER=$(id -nu 1000 2>/dev/null || echo "eu")
       USER_HOME="/home/$TARGET_USER"
       mkdir -p "$USER_HOME/.ssh"
       if [ ! -f "$USER_HOME/.ssh/id_ed25519" ]; then
@@ -275,16 +298,15 @@ script:
 EOF
 
 # -------------------------------------------------------------------------
-# Sincronização do repositório no pendrive
+# Sincronização do repositório no pendrive (sem reter diretório aberto)
 # -------------------------------------------------------------------------
-if [ ! -d /mnt/ventoy/scripts/ansible-debian-desktop ]; then
+REPO_TARGET="/mnt/ventoy/scripts/ansible-debian-desktop"
+if [ ! -d "$REPO_TARGET" ]; then
   echo "==> Clonando ansible-debian-desktop..."
-  cd /mnt/ventoy/scripts
-  sudo git clone https://github.com/vndmtrx/ansible-debian-desktop.git
+  sudo git clone https://github.com/vndmtrx/ansible-debian-desktop.git "$REPO_TARGET"
 else
   echo "==> Repositório Ansible já presente. Atualizando..."
-  cd /mnt/ventoy/scripts/ansible-debian-desktop
-  sudo git pull || true
+  sudo git -C "$REPO_TARGET" pull || true
 fi
 
 sync
