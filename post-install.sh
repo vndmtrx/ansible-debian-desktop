@@ -3,7 +3,8 @@
 # Script: post-install.sh
 # Descrição: Otimizador pós-instalação idempotente para Debian 13 (Trixie)
 #            Executa no primeiro boot após instalação padrão do Calamares.
-#            Aplica calibração LUKS (500ms), NVMe, GRUB, ext4/btrfs, zram e bootstrap.
+#            Aplica calibração LUKS (500ms), NVMe, GRUB, ext4/btrfs, Plymouth/Userspace,
+#            zram e bootstrap.
 # ==============================================================================
 set -euo pipefail
 
@@ -47,7 +48,7 @@ record_action() {
 # -------------------------------------------------------------------------
 # 1. Calibração de Boot LUKS: PBKDF2 em 500ms no Slot 0
 # -------------------------------------------------------------------------
-log_info "1/10 Verificando calibração PBKDF2 e keyslot do LUKS..."
+log_info "1/11 Verificando calibração PBKDF2 e keyslot do LUKS..."
 
 ROOT_SOURCE=$(findmnt -no SOURCE / || true)
 ROOT_LUKS_DEV=""
@@ -65,11 +66,9 @@ if [ -n "$ROOT_LUKS_DEV" ] && cryptsetup isLuks "$ROOT_LUKS_DEV" 2>/dev/null; th
   
   if echo "$LUKS_DUMP" | grep -q "Key Slot 0: ENABLED"; then
     SLOT0_EXISTS=true
-    # LUKS1 exibe 'Iterations: X' logo abaixo do slot
     SLOT0_ITERATIONS=$(echo "$LUKS_DUMP" | awk '/Key Slot 0: ENABLED/{flag=1; next} /Key Slot [1-7]:/{flag=0} flag && /Iterations:/{print $2; exit}' || echo "0")
   fi
 
-  # Se o Slot 0 tiver mais de 2.000.000 iterações (típico padrão do debian-installer/calamares é 5-6M)
   if [ "$SLOT0_EXISTS" = true ] && [ "${SLOT0_ITERATIONS:-0}" -gt 0 ] && [ "${SLOT0_ITERATIONS:-0}" -le 2000000 ]; then
     log_ok "LUKS Slot 0 já está calibrado para boot rápido (${SLOT0_ITERATIONS} iterações)."
   else
@@ -80,7 +79,6 @@ if [ -n "$ROOT_LUKS_DEV" ] && cryptsetup isLuks "$ROOT_LUKS_DEV" 2>/dev/null; th
     echo ""
 
     KEYFILE_FLAG=""
-    # Se existir um keyfile no sistema (ex: /crypto_keyfile.bin), usamos para autenticar
     if [ -f "/crypto_keyfile.bin" ]; then
       KEYFILE_FLAG="--key-file /crypto_keyfile.bin"
       log_step "Usando /crypto_keyfile.bin para autorizar a recriação da chave..."
@@ -100,7 +98,6 @@ if [ -n "$ROOT_LUKS_DEV" ] && cryptsetup isLuks "$ROOT_LUKS_DEV" 2>/dev/null; th
     if [ -n "$KEYFILE_FLAG" ]; then
       cryptsetup luksKillSlot "$ROOT_LUKS_DEV" 0 $KEYFILE_FLAG || true
     else
-      # Se não tem keyfile, pede a senha da chave recém-criada no slot 2
       cryptsetup luksKillSlot "$ROOT_LUKS_DEV" 0 || true
     fi
 
@@ -127,7 +124,7 @@ fi
 # -------------------------------------------------------------------------
 # 2. Habilitar suporte a cryptodisk e pré-carregar módulos no GRUB
 # -------------------------------------------------------------------------
-log_info "2/10 Verificando configurações do GRUB (/etc/default/grub)..."
+log_info "2/11 Verificando configurações do GRUB (/etc/default/grub)..."
 
 if [ -f "$GRUB_CONFIG" ]; then
   # 2.1 GRUB_ENABLE_CRYPTODISK
@@ -209,7 +206,7 @@ fi
 # -------------------------------------------------------------------------
 # 3. Desativar swap em disco e limpar referências (/etc/fstab, crypttab, resume)
 # -------------------------------------------------------------------------
-log_info "3/10 Verificando swap em disco e configurações de hibernação..."
+log_info "3/11 Verificando swap em disco e configurações de hibernação..."
 
 # 3.1 Desativar swap ativo em disco
 SWAP_DEVS=$(swapon --show=NAME --noheadings 2>/dev/null | grep -v 'zram' || true)
@@ -297,7 +294,7 @@ fi
 # -------------------------------------------------------------------------
 # 4. Redimensionar partição raiz (reivindicar espaço da partição de swap a quente)
 # -------------------------------------------------------------------------
-log_info "4/10 Verificando topologia de disco e redimensionamento online..."
+log_info "4/11 Verificando topologia de disco e redimensionamento online..."
 
 if [ -n "$ROOT_LUKS_DEV" ]; then
   DISK_DEV=$(lsblk -lnps -o NAME,TYPE "$ROOT_LUKS_DEV" | grep 'disk' | head -n 1 | awk '{print $1}' || true)
@@ -386,7 +383,7 @@ fi
 # -------------------------------------------------------------------------
 # 5. Otimizar /etc/crypttab com flags NVMe síncronas e TRIM
 # -------------------------------------------------------------------------
-log_info "5/10 Verificando flags de desempenho NVMe no /etc/crypttab..."
+log_info "5/11 Verificando flags de desempenho NVMe no /etc/crypttab..."
 
 CRYPTTAB="/etc/crypttab"
 if [ -f "$CRYPTTAB" ] && [ -s "$CRYPTTAB" ]; then
@@ -406,7 +403,7 @@ fi
 # -------------------------------------------------------------------------
 # 6. Configurar sysctl para SSDs e memória
 # -------------------------------------------------------------------------
-log_info "6/10 Verificando parâmetros de sysctl (/etc/sysctl.d/99-nvme-performance.conf)..."
+log_info "6/11 Verificando parâmetros de sysctl (/etc/sysctl.d/99-nvme-performance.conf)..."
 
 SYSCTL_CONF="/etc/sysctl.d/99-nvme-performance.conf"
 SYSCTL_CONTENT=$(cat << 'EOF'
@@ -430,7 +427,7 @@ fi
 # -------------------------------------------------------------------------
 # 7. Configurar regra UDEV para scheduler 'none' em NVMe
 # -------------------------------------------------------------------------
-log_info "7/10 Verificando regra UDEV de scheduler NVMe (/etc/udev/rules.d/60-nvme-scheduler.rules)..."
+log_info "7/11 Verificando regra UDEV de scheduler NVMe (/etc/udev/rules.d/60-nvme-scheduler.rules)..."
 
 UDEV_RULE="/etc/udev/rules.d/60-nvme-scheduler.rules"
 UDEV_CONTENT='ACTION=="add|change", KERNEL=="nvme[0-9]*n[0-9]*", ATTR{queue/scheduler}="none"'
@@ -447,9 +444,36 @@ else
 fi
 
 # -------------------------------------------------------------------------
-# 8. Atualizar initramfs e GRUB se houver alterações
+# 8. Otimização de Userspace: Plymouth e NetworkManager-wait-online
 # -------------------------------------------------------------------------
-log_info "8/10 Verificando necessidade de compilação de initramfs e GRUB..."
+log_info "8/11 Verificando otimizações de serviços de userspace..."
+
+# 8.1 Mascarar plymouth-quit-wait.service (elimina até 21s de atraso no display manager)
+PLYMOUTH_SERVICE="plymouth-quit-wait.service"
+if systemctl is-active --quiet "$PLYMOUTH_SERVICE" 2>/dev/null || [ "$(systemctl is-enabled "$PLYMOUTH_SERVICE" 2>/dev/null)" != "masked" ]; then
+  log_step "Mascarando $PLYMOUTH_SERVICE para eliminar timeout de transição gráfica..."
+  systemctl mask "$PLYMOUTH_SERVICE" 2>/dev/null || true
+  log_applied "$PLYMOUTH_SERVICE mascarado com sucesso."
+  record_action
+else
+  log_ok "$PLYMOUTH_SERVICE já está mascarado."
+fi
+
+# 8.2 Desativar NetworkManager-wait-online.service (elimina 3-5s de retenção desnecessária)
+NM_WAIT_SERVICE="NetworkManager-wait-online.service"
+if systemctl is-enabled --quiet "$NM_WAIT_SERVICE" 2>/dev/null; then
+  log_step "Desativando $NM_WAIT_SERVICE para não bloquear o boot esperando Wi-Fi/DHCP..."
+  systemctl disable "$NM_WAIT_SERVICE" 2>/dev/null || true
+  log_applied "$NM_WAIT_SERVICE desativado com sucesso."
+  record_action
+else
+  log_ok "$NM_WAIT_SERVICE já está desativado."
+fi
+
+# -------------------------------------------------------------------------
+# 9. Atualizar initramfs e GRUB se houver alterações
+# -------------------------------------------------------------------------
+log_info "9/11 Verificando necessidade de compilação de initramfs e GRUB..."
 
 if [ "$INITRAMFS_CHANGED" = true ]; then
   log_step "Regerando imagens do initramfs (update-initramfs -u -k all)..."
@@ -470,9 +494,9 @@ else
 fi
 
 # -------------------------------------------------------------------------
-# 9. Instalar e ativar zram (swap comprimido em RAM)
+# 10. Instalar e ativar zram (swap comprimido em RAM)
 # -------------------------------------------------------------------------
-log_info "9/10 Verificando serviço de swap em RAM (zram-tools)..."
+log_info "10/11 Verificando serviço de swap em RAM (zram-tools)..."
 
 if ! dpkg -l zram-tools 2>/dev/null | grep -q '^ii'; then
   log_step "Instalando zram-tools para paginação comprimida em RAM..."
@@ -486,9 +510,9 @@ else
 fi
 
 # -------------------------------------------------------------------------
-# 10. Dependências essenciais de bootstrap
+# 11. Dependências essenciais de bootstrap
 # -------------------------------------------------------------------------
-log_info "10/10 Verificando ferramentas essenciais (pipx, git, curl, sudo)..."
+log_info "11/11 Verificando ferramentas essenciais (pipx, git, curl, sudo)..."
 
 MISSING_PKGS=()
 for pkg in pipx git curl sudo; do
