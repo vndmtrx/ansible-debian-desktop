@@ -177,9 +177,9 @@ Você pode repassar argumentos e tags diretamente pelo `./bootstrap.sh` (ou via 
 
 ---
 
-## 🚀 Day-0 / Day-1: Preparação de Mídia com Ventoy e Calamares (`setup-ventoy.sh`)
+## 🚀 Day-0 / Day-1: Preparação de Mídia com Ventoy (`setup-ventoy.sh`)
 
-Para que a máquina física já nasça com particionamento **Btrfs**, subvolumes dedicados (`/@`, `/@home`, `/@log`, `/@snapshots`), **LUKS1** otimizado (PBKDF2 em 500ms para compatibilidade nativa e descriptografia instantânea no GRUB) e sincronização do repositório, utilize o script declarativo [`setup-ventoy.sh`](setup-ventoy.sh):
+Para preparar a mídia de instalação com o repositório Ansible e backups de segurança, utilize o script [`setup-ventoy.sh`](setup-ventoy.sh):
 
 ```bash
 # Com o pendrive Ventoy plugado no computador:
@@ -189,62 +189,54 @@ chmod +x setup-ventoy.sh
 
 O script:
 1. Monta a partição de dados do Ventoy de forma idempotente.
-2. Sincroniza a pasta modular [`ventoy/`](ventoy/) para o pendrive (`/scripts/`), comparando hash MD5:
-   ```text
-   /mnt/ventoy/
-   ├── debian-live-13.7.0-amd64-gnome.iso
-   ├── backup/                             <-- Backups cifrados (.tar.bz2.gpg)
-   ├── ventoy/
-   │   ├── ventoy.json                     <-- Configuração oficial do Ventoy Injection
-   │   └── scripts-injection.tar.gz        <-- Pacote auto-injetado na RAM da Live ISO
-   └── scripts/
-       ├── apply-calamares.sh              <-- Injetor modular (compara hash MD5)
-       ├── modules/                        <-- Módulos declarativos do Calamares
-       │   ├── fstab.conf                  <-- Subvolumes Btrfs e flags síncronas
-       │   ├── partition.conf              <-- LUKS1 PBKDF2 500ms
-       │   ├── users.conf                  <-- Grupos e usuário padrão
-       │   ├── shellprocess@grubcrypt.conf <-- Ativa cryptodisk, zswap e timeout 1s no GRUB
-       │   ├── shellprocess@sysctl_nvme.conf <-- Flags NVMe crypttab, sysctl e scheduler none
-       │   ├── shellprocess@initramfs.conf <-- Força atualização do initramfs
-       │   └── shellprocess@bootstrap.conf <-- Instala pipx, git, curl e sudo
-       └── ansible-debian-desktop/         <-- Clone local do repositório
-   ```
-3. **Gera automaticamente o pacote de injeção (`/ventoy/scripts-injection.tar.gz`) e o `/ventoy/ventoy.json`**:
-   - Inclui todos os scripts, módulos, o repositório Ansible e os backups locais criptografados (`.tar.bz2.gpg`).
-   - Cria um atalho executável no Desktop do Live CD: **`⚡ Instalar Debian Customizado`**.
-4. Inspeciona `~/du/backups/` e copia com segurança os backups criptografados (`.tar.bz2.gpg`, `.sha256`, `.asc`) para o pendrive.
+2. Clona/atualiza o repositório Ansible para o pendrive.
+3. Sincroniza backups criptografados de `~/du/backups/` para `/backup/` no pendrive.
 
----
+```text
+/mnt/ventoy/
+├── debian-live-13.7.0-amd64-gnome.iso
+├── backup/                              <-- Backups cifrados (.tar.bz2.gpg)
+└── scripts/
+    └── ansible-debian-desktop/          <-- Clone local do repositório
+```
 
-### 🖥️ Fluxo de Instalação no Debian Live (100% Automático)
-
-Graças ao **Ventoy Injection Plugin**, **nenhum comando manual de montagem ou `losetup` é necessário** ao iniciar o Live CD:
+### 🖥️ Fluxo de Instalação
 
 1. **Boot pelo Ventoy:** Selecione a ISO do Debian Live GNOME no menu do Ventoy.
-2. **Ao carregar a área de trabalho Live:**
-   - Dê um duplo clique no atalho **`⚡ Instalar Debian Customizado`** disponível no Desktop;
-   - *(Ou via terminal):* `sudo /opt/ventoy-scripts/apply-calamares.sh`
-3. **Instalação Gráfica:** Teclado, fuso horário e usuário já vêm pré-configurados. Na tela de partição, marque **"Apagar disco"** e **"Criptografar sistema"**.
-4. O Calamares executa os módulos declarativos de forma 100% idempotente durante o processo:
-   - **LUKS1 & Btrfs:** Subvolumes dedicados (`/@`, `/@home`, `/@log`, `/@snapshots`) com PBKDF2 (500ms).
-   - **Pipeline NVMe síncrono & TRIM:** Flags `discard,no-read-workqueue,no-write-workqueue` no `crypttab`.
-   - **Compressão zswap:** Ativa `zswap.enabled=1`, `zswap.compressor=zstd`, `zswap.zpool=zsmalloc` no GRUB.
-   - **Boot Rápido:** Remove `splash`, ajusta `GRUB_TIMEOUT=1` e pré-carrega módulos LUKS/Btrfs no EFI.
-   - **Initramfs Otimizado:** Define `RESUME=none` e regenera a imagem via `update-initramfs -u -k all`.
-   - **Sysctl & Udev:** Scheduler `none` e parâmetros de memória para SSD NVMe.
-   - **Bootstrap Automático:** Instala `pipx`, `git`, `curl` e `sudo` diretamente no chroot do SSD.
-5. Ao concluir a instalação, o repositório Ansible e os backups criptografados são **automaticamente copiados para o seu usuário** em `~/du/dev/github/ansible-debian-desktop` e `~/du/backups/`.
+2. **Instalação Gráfica padrão:** Execute o Calamares normalmente. Na tela de partição, marque **"Apagar disco"** e **"Criptografar sistema"**.
+3. **Primeiro Boot — Otimizações de baixo nível:** Ao reiniciar no SSD recém-instalado, monte o pendrive e copie o repositório:
 
-No primeiro boot do sistema recém-instalado:
 ```bash
-cd ~/du/dev/github/ansible-debian-desktop
+# 1. Copiar repositório do pendrive
+mkdir -p ~/du/dev/github
+cp -r /media/$USER/Ventoy/scripts/ansible-debian-desktop ~/du/dev/github/
 
-# 1. Opcional: restaura chaves SSH, GPG, chaveiro GNOME e atalhos se houver backup
+# 2. Copiar backups (se existirem)
+mkdir -p ~/du/backups
+cp -p /media/$USER/Ventoy/backup/* ~/du/backups/ 2>/dev/null || true
+
+# 3. Aplicar otimizações de NVMe, GRUB, zram e sysctl
+cd ~/du/dev/github/ansible-debian-desktop
+sudo ./post-install.sh
+
+# 4. Opcional: restaurar chaves SSH, GPG, chaveiro GNOME e atalhos
 ./restore.sh
 
-# 2. Dispara o provisionamento completo do ambiente
+# 5. Disparar o provisionamento completo do ambiente
 ./bootstrap.sh
 ```
+
+O **[`post-install.sh`](post-install.sh)** aplica de forma 100% idempotente:
+1. **GRUB Cryptodisk:** Habilita `GRUB_ENABLE_CRYPTODISK=y` e pré-carrega módulos `luks`, `crypto`, `btrfs` na imagem EFI.
+2. **Boot Rápido:** Remove `splash`, ajusta `GRUB_TIMEOUT=1`.
+3. **Eliminação do swap em disco:** Desativa e remove a partição de swap criptografada, limpa `/etc/fstab`, `/etc/crypttab` e o parâmetro `resume=` do GRUB.
+4. **Redimensionamento da raiz a quente:** Deleta a partição de swap morta, expande a partição raiz até o limite do disco e redimensiona o container LUKS e o filesystem (ext4 ou btrfs) online.
+5. **Pipeline NVMe síncrono & TRIM:** Injeta `discard,no-read-workqueue,no-write-workqueue` em `/etc/crypttab`.
+6. **Initramfs Otimizado:** Define `RESUME=none` e regenera a imagem.
+7. **Sysctl NVMe:** Configura `/etc/sysctl.d/99-nvme-performance.conf` (`vm.swappiness=100`, etc.).
+8. **Scheduler NVMe:** Aplica regra udev com scheduler `none`.
+9. **Swap comprimido em RAM (zram):** Instala `zram-tools` com compressão `zstd`, substituindo o swap em disco por um dispositivo de bloco comprimido na memória RAM.
+10. **Bootstrap Mínimo:** Instala `pipx`, `git`, `curl` e `sudo`.
 
 ---
 
