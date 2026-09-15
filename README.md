@@ -194,9 +194,12 @@ O script:
 4. Clona/atualiza o repositório Ansible para a mídia.
 5. Inspeciona `~/du/backups/` e copia com segurança os backups criptografados (`.tar.bz2.gpg`, `.sha256`, `.asc`) para `/mnt/ventoy/backup/` sem sobrescrever nada indevido.
 
-No ambiente Debian Live, basta disparar:
+No ambiente Debian Live, monte a partição via loop device (para desacoplar o lock do Ventoy) e execute o injetor:
 ```bash
-sudo mkdir -p /mnt/ventoy && sudo mount -L Ventoy /mnt/ventoy
+sudo mkdir -p /mnt/ventoy
+LOOP_DEV=$(sudo losetup -r -f --show /dev/sda1 2>/dev/null || echo "/dev/sda1")
+sudo mount -o ro "$LOOP_DEV" /mnt/ventoy
+
 sudo /mnt/ventoy/scripts/apply-calamares.sh
 ```
 
