@@ -202,7 +202,23 @@ script:
     command: "apt-get update && apt-get install -y pipx git curl sudo"
 SHELL_CONF
 
-# 4. Injetar o job nativo shellprocess no settings.conf original (antes de initramfs/umount)
+# 4. Garantir que o Calamares localize os módulos da arquitetura multiarch x86_64-linux-gnu
+sudo mkdir -p /usr/lib/calamares/modules
+for mod in /usr/lib/x86_64-linux-gnu/calamares/modules/*; do
+  if [ -d "$mod" ]; then
+    mod_name=$(basename "$mod")
+    if [ ! -e "/usr/lib/calamares/modules/$mod_name" ]; then
+      sudo ln -sf "$mod" "/usr/lib/calamares/modules/$mod_name"
+    fi
+  fi
+done
+
+# Garantir modules-search no settings.conf
+if ! grep -q "/usr/lib/x86_64-linux-gnu/calamares/modules" /etc/calamares/settings.conf; then
+  sudo sed -i 's|modules-search: \[ \(.*\) \]|modules-search: [ \1, /usr/lib/x86_64-linux-gnu/calamares/modules ]|' /etc/calamares/settings.conf
+fi
+
+# 5. Injetar o job nativo shellprocess no settings.conf original (antes de initramfs/umount)
 if ! grep -q "shellprocess" /etc/calamares/settings.conf; then
   sudo sed -i '/- initramfscfg/i \  - shellprocess' /etc/calamares/settings.conf
 fi
