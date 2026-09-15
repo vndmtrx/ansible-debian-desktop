@@ -25,6 +25,12 @@ log_ok()      { echo -e "  ${DIM}[=] JÁ CONFIGURADO:${RESET} $1"; }
 log_warn()    { echo -e "  ${YELLOW}[!] AVISO:${RESET} $1"; }
 log_err()     { echo -e "  ${RED}[x] ERRO:${RESET} $1" >&2; }
 
+# Função auxiliar para dar 1s de pausa e sincronizar buffers de disco
+step_pause() {
+  sync
+  sleep 1
+}
+
 # Garantir execução como root
 if [ "$(id -u)" -ne 0 ]; then
   log_err "Este script deve ser executado como root (use: sudo ./post-install.sh)"
@@ -120,6 +126,7 @@ if [ -n "$ROOT_LUKS_DEV" ] && cryptsetup isLuks "$ROOT_LUKS_DEV" 2>/dev/null; th
 else
   log_ok "Dispositivo raiz não utiliza LUKS ou não pôde ser inspecionado."
 fi
+step_pause
 
 # -------------------------------------------------------------------------
 # 2. Habilitar suporte a cryptodisk e pré-carregar módulos no GRUB
@@ -202,6 +209,7 @@ if [ -f "$GRUB_CONFIG" ]; then
 else
   log_warn "Arquivo $GRUB_CONFIG não encontrado. Etapa do GRUB ignorada."
 fi
+step_pause
 
 # -------------------------------------------------------------------------
 # 3. Desativar swap em disco e limpar referências (/etc/fstab, crypttab, resume)
@@ -290,6 +298,7 @@ if [ ! -f "$RESUME_CONF" ] || [ "$(cat "$RESUME_CONF" 2>/dev/null)" != "RESUME=n
 else
   log_ok "Initramfs já configurado com RESUME=none."
 fi
+step_pause
 
 # -------------------------------------------------------------------------
 # 4. Redimensionar partição raiz (reivindicar espaço da partição de swap a quente)
@@ -379,6 +388,7 @@ if [ -n "$ROOT_LUKS_DEV" ]; then
 else
   log_warn "Não foi possível determinar a partição física do ponto de montagem /."
 fi
+step_pause
 
 # -------------------------------------------------------------------------
 # 5. Otimizar /etc/crypttab com flags NVMe síncronas e TRIM
@@ -399,6 +409,7 @@ if [ -f "$CRYPTTAB" ] && [ -s "$CRYPTTAB" ]; then
 else
   log_ok "/etc/crypttab vazio ou inexistente (criptografia não ativa via crypttab)."
 fi
+step_pause
 
 # -------------------------------------------------------------------------
 # 6. Configurar sysctl para SSDs e memória
@@ -423,6 +434,7 @@ if [ ! -f "$SYSCTL_CONF" ] || [ "$(cat "$SYSCTL_CONF" 2>/dev/null)" != "$SYSCTL_
 else
   log_ok "Parâmetros de sysctl já sincronizados."
 fi
+step_pause
 
 # -------------------------------------------------------------------------
 # 7. Configurar regra UDEV para scheduler 'none' em NVMe
@@ -442,6 +454,7 @@ if [ ! -f "$UDEV_RULE" ] || [ "$(cat "$UDEV_RULE" 2>/dev/null)" != "$UDEV_CONTEN
 else
   log_ok "Regra UDEV de scheduler NVMe já configurada."
 fi
+step_pause
 
 # -------------------------------------------------------------------------
 # 8. Otimização de Userspace: Plymouth e NetworkManager-wait-online
@@ -469,6 +482,7 @@ if systemctl is-enabled --quiet "$NM_WAIT_SERVICE" 2>/dev/null; then
 else
   log_ok "$NM_WAIT_SERVICE já está desativado."
 fi
+step_pause
 
 # -------------------------------------------------------------------------
 # 9. Atualizar initramfs e GRUB
@@ -483,6 +497,7 @@ log_step "Regerando menu de boot do GRUB (update-grub)..."
 update-grub
 log_applied "GRUB atualizado com sucesso."
 record_action
+step_pause
 
 # -------------------------------------------------------------------------
 # 10. Instalar e ativar zram (swap comprimido em RAM)
@@ -499,6 +514,7 @@ if ! dpkg -l zram-tools 2>/dev/null | grep -q '^ii'; then
 else
   log_ok "Pacote zram-tools já instalado e ativo."
 fi
+step_pause
 
 # -------------------------------------------------------------------------
 # 11. Dependências essenciais de bootstrap
