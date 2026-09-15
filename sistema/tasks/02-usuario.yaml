@@ -40,6 +40,22 @@
   loop: "{{ diretorios_usuario }}"
   become: false
 
+- name: Garante diretório .ssh com permissões seguras
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.ssh"
+    state: directory
+    mode: '0700'
+  become: false
+
+- name: Garante existência da chave SSH id_ed25519
+  community.crypto.openssh_keypair:
+    path: "{{ ansible_env.HOME }}/.ssh/id_ed25519"
+    type: ed25519
+    comment: "{{ ssh_key_email }}"
+    state: present
+    mode: '0600'
+  become: false
+
 - name: Garante diretório do GNOME Keyring com permissões restritas
   ansible.builtin.file:
     path: "{{ ansible_env.HOME }}/.local/share/keyrings"
@@ -97,12 +113,15 @@
     mode: '0700'
   become: false
 
-- name: Cria link para utilitário de backup e restore de segurança
+- name: Cria links para utilitários de backup e restore de segurança
   ansible.builtin.file:
-    src: "{{ playbook_dir }}/backup.sh"
-    dest: "{{ ansible_env.HOME }}/.local/bin/backup-seguranca"
+    src: "{{ playbook_dir }}/{{ item.src }}"
+    dest: "{{ ansible_env.HOME }}/.local/bin/{{ item.dest }}"
     state: link
     force: true
+  loop:
+    - { src: "backup.sh", dest: "backup-seguranca" }
+    - { src: "restore.sh", dest: "restore-seguranca" }
   become: false
 
 - name: Configura aliases para Bash
