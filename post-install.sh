@@ -3,7 +3,7 @@
 # Script: post-install.sh
 # Descrição: Otimizador pós-instalação idempotente para Debian 13 (Trixie)
 #            Executa no primeiro boot após instalação padrão do Calamares.
-#            Aplica configurações de NVMe, GRUB, LUKS, ext4/btrfs, zram e bootstrap.
+#            Aplica calibração LUKS (500ms), NVMe, GRUB, ext4/btrfs, zram e bootstrap.
 # ==============================================================================
 set -euo pipefail
 
@@ -45,12 +45,92 @@ record_action() {
 }
 
 # -------------------------------------------------------------------------
-# 1. Habilitar suporte a cryptodisk e pré-carregar módulos no GRUB
+# 1. Calibração de Boot LUKS: PBKDF2 em 500ms no Slot 0
 # -------------------------------------------------------------------------
-log_info "1/9 Verificando configurações do GRUB (/etc/default/grub)..."
+log_info "1/10 Verificando calibração PBKDF2 e keyslot do LUKS..."
+
+ROOT_SOURCE=$(findmnt -no SOURCE / || true)
+ROOT_LUKS_DEV=""
+if [ -n "$ROOT_SOURCE" ]; then
+  ROOT_LUKS_DEV=$(lsblk -lnps -o NAME,TYPE "$ROOT_SOURCE" | grep 'part' | head -n 1 | awk '{print $1}' || true)
+fi
+
+if [ -n "$ROOT_LUKS_DEV" ] && cryptsetup isLuks "$ROOT_LUKS_DEV" 2>/dev/null; then
+  # Verificar informações do LUKS
+  LUKS_DUMP=$(cryptsetup luksDump "$ROOT_LUKS_DEV" 2>/dev/null || true)
+  
+  # Extrair iterações do Slot 0 se existir
+  SLOT0_EXISTS=false
+  SLOT0_ITERATIONS=0
+  
+  if echo "$LUKS_DUMP" | grep -q "Key Slot 0: ENABLED"; then
+    SLOT0_EXISTS=true
+    # LUKS1 exibe 'Iterations: X' logo abaixo do slot
+    SLOT0_ITERATIONS=$(echo "$LUKS_DUMP" | awk '/Key Slot 0: ENABLED/{flag=1; next} /Key Slot [1-7]:/{flag=0} flag && /Iterations:/{print $2; exit}' || echo "0")
+  fi
+
+  # Se o Slot 0 tiver mais de 2.000.000 iterações (típico padrão do debian-installer/calamares é 5-6M)
+  if [ "$SLOT0_EXISTS" = true ] && [ "${SLOT0_ITERATIONS:-0}" -gt 0 ] && [ "${SLOT0_ITERATIONS:-0}" -le 2000000 ]; then
+    log_ok "LUKS Slot 0 já está calibrado para boot rápido (${SLOT0_ITERATIONS} iterações)."
+  else
+    echo ""
+    echo -e "  ${YELLOW}${BOLD}⚠️  Otimização de Descriptografia no GRUB (PBKDF2 iter-time 500ms):${RESET}"
+    echo -e "  ${DIM}O instalador padrão cria chaves com ~5 a 6 milhões de iterações, gerando até 50s de tela preta no GRUB.${RESET}"
+    echo -e "  ${CYAN}Vamos recriar a chave no ${BOLD}Slot 0${RESET}${CYAN} calibrada em 500ms (~1.4M iterações) para boot instantâneo.${RESET}"
+    echo ""
+
+    KEYFILE_FLAG=""
+    # Se existir um keyfile no sistema (ex: /crypto_keyfile.bin), usamos para autenticar
+    if [ -f "/crypto_keyfile.bin" ]; then
+      KEYFILE_FLAG="--key-file /crypto_keyfile.bin"
+      log_step "Usando /crypto_keyfile.bin para autorizar a recriação da chave..."
+    fi
+
+    # 1. Cria chave temporária no Slot 2 com iter-time 500
+    log_step "Adicionando chave calibrada no Slot 2 com --iter-time 500..."
+    if [ -n "$KEYFILE_FLAG" ]; then
+      cryptsetup luksAddKey "$ROOT_LUKS_DEV" $KEYFILE_FLAG --iter-time 500 -S 2
+    else
+      echo -e "  ${BOLD}Digite a senha do LUKS para autorizar a operação:${RESET}"
+      cryptsetup luksAddKey "$ROOT_LUKS_DEV" --iter-time 500 -S 2
+    fi
+
+    # 2. Mata o antigo Slot 0 pesado
+    log_step "Removendo antigo Slot 0 não-otimizado..."
+    if [ -n "$KEYFILE_FLAG" ]; then
+      cryptsetup luksKillSlot "$ROOT_LUKS_DEV" 0 $KEYFILE_FLAG || true
+    else
+      # Se não tem keyfile, pede a senha da chave recém-criada no slot 2
+      cryptsetup luksKillSlot "$ROOT_LUKS_DEV" 0 || true
+    fi
+
+    # 3. Recria a chave no Slot 0 definitivo com iter-time 500
+    log_step "Gravando chave definitiva no Slot 0 com --iter-time 500..."
+    if [ -n "$KEYFILE_FLAG" ]; then
+      cryptsetup luksAddKey "$ROOT_LUKS_DEV" $KEYFILE_FLAG --iter-time 500 -S 0
+      log_step "Limpando Slot 2 temporário..."
+      cryptsetup luksKillSlot "$ROOT_LUKS_DEV" 2 $KEYFILE_FLAG || true
+    else
+      echo -e "  ${BOLD}Digite a senha novamente para fixar no Slot 0:${RESET}"
+      cryptsetup luksAddKey "$ROOT_LUKS_DEV" --iter-time 500 -S 0
+      log_step "Limpando Slot 2 temporário..."
+      cryptsetup luksKillSlot "$ROOT_LUKS_DEV" 2 || true
+    fi
+
+    log_applied "Chave do LUKS no Slot 0 calibrada em 500ms com sucesso!"
+    record_action
+  fi
+else
+  log_ok "Dispositivo raiz não utiliza LUKS ou não pôde ser inspecionado."
+fi
+
+# -------------------------------------------------------------------------
+# 2. Habilitar suporte a cryptodisk e pré-carregar módulos no GRUB
+# -------------------------------------------------------------------------
+log_info "2/10 Verificando configurações do GRUB (/etc/default/grub)..."
 
 if [ -f "$GRUB_CONFIG" ]; then
-  # 1.1 GRUB_ENABLE_CRYPTODISK
+  # 2.1 GRUB_ENABLE_CRYPTODISK
   if grep -q "^GRUB_ENABLE_CRYPTODISK=y" "$GRUB_CONFIG"; then
     log_ok "GRUB_ENABLE_CRYPTODISK já está ativo (y)."
   else
@@ -65,7 +145,7 @@ if [ -f "$GRUB_CONFIG" ]; then
     record_action
   fi
 
-  # 1.2 GRUB_PRELOAD_MODULES
+  # 2.2 GRUB_PRELOAD_MODULES
   PRELOAD_TARGET='GRUB_PRELOAD_MODULES="luks crypto gcry_rijndael gcry_sha256 btrfs"'
   if grep -q "^GRUB_PRELOAD_MODULES=" "$GRUB_CONFIG"; then
     CURRENT_PRELOAD=$(grep "^GRUB_PRELOAD_MODULES=" "$GRUB_CONFIG")
@@ -86,7 +166,7 @@ if [ -f "$GRUB_CONFIG" ]; then
     record_action
   fi
 
-  # 1.3 Limpar zswap residual (se existir)
+  # 2.3 Limpar zswap residual (se existir)
   if grep -q "zswap\.enabled" "$GRUB_CONFIG"; then
     log_step "Removendo parâmetros residuais de zswap da linha do kernel..."
     sed -i -E 's/zswap\.[^ "]+//g; s/  */ /g' "$GRUB_CONFIG"
@@ -97,7 +177,7 @@ if [ -f "$GRUB_CONFIG" ]; then
     log_ok "Nenhum parâmetro residual de zswap no GRUB."
   fi
 
-  # 1.4 Remover splash
+  # 2.4 Remover splash
   if grep -q "splash" "$GRUB_CONFIG"; then
     log_step "Removendo splash da linha do kernel para boot limpo e rápido..."
     sed -i 's/\bsplash\b//g; s/  */ /g' "$GRUB_CONFIG"
@@ -108,7 +188,7 @@ if [ -f "$GRUB_CONFIG" ]; then
     log_ok "Splash já ausente no GRUB."
   fi
 
-  # 1.5 GRUB_TIMEOUT=1
+  # 2.5 GRUB_TIMEOUT=1
   if grep -q '^GRUB_TIMEOUT=1' "$GRUB_CONFIG"; then
     log_ok "Timeout do GRUB já configurado para 1s."
   else
@@ -127,11 +207,11 @@ else
 fi
 
 # -------------------------------------------------------------------------
-# 2. Desativar swap em disco e limpar referências (/etc/fstab, crypttab, resume)
+# 3. Desativar swap em disco e limpar referências (/etc/fstab, crypttab, resume)
 # -------------------------------------------------------------------------
-log_info "2/9 Verificando swap em disco e configurações de hibernação..."
+log_info "3/10 Verificando swap em disco e configurações de hibernação..."
 
-# 2.1 Desativar swap ativo em disco
+# 3.1 Desativar swap ativo em disco
 SWAP_DEVS=$(swapon --show=NAME --noheadings 2>/dev/null | grep -v 'zram' || true)
 if [ -n "$SWAP_DEVS" ]; then
   for dev in $SWAP_DEVS; do
@@ -144,8 +224,7 @@ else
   log_ok "Nenhum swap ativo em disco físico."
 fi
 
-# 2.2 Fechar containers de swap mapeados pelo device mapper
-# Busca pelo crypttab ou por mapeamentos abertos em dispositivos de bloco
+# 3.2 Fechar containers de swap mapeados pelo device mapper
 SWAP_MAPPERS=()
 if [ -f /etc/crypttab ]; then
   while read -r name _; do
@@ -155,14 +234,12 @@ if [ -f /etc/crypttab ]; then
   done < <(grep 'swap' /etc/crypttab || true)
 fi
 
-# Adiciona qualquer mapper ativo associado a partição swap
 while read -r mname; do
   if [ -n "$mname" ] && [[ ! " ${SWAP_MAPPERS[*]:-} " =~ " ${mname} " ]]; then
     SWAP_MAPPERS+=("$mname")
   fi
 done < <(lsblk -lnp -o NAME,TYPE,FSTYPE | grep -i 'swap' | grep 'crypt' | awk '{print $1}' | sed 's|/dev/mapper/||' || true)
 
-# 2.3 Fechar cada container LUKS de swap antes de mexer nas partições
 for mapper in "${SWAP_MAPPERS[@]:-}"; do
   if [ -b "/dev/mapper/$mapper" ]; then
     log_step "Fechando container LUKS da swap (/dev/mapper/$mapper)..."
@@ -172,7 +249,7 @@ for mapper in "${SWAP_MAPPERS[@]:-}"; do
   fi
 done
 
-# 2.4 Limpar /etc/crypttab
+# 3.3 Limpar /etc/crypttab
 if [ -f /etc/crypttab ] && grep -q 'swap' /etc/crypttab; then
   log_step "Removendo entrada de swap do /etc/crypttab..."
   sed -i '/swap/d' /etc/crypttab
@@ -183,7 +260,7 @@ else
   log_ok "/etc/crypttab já não possui entradas de swap."
 fi
 
-# 2.5 Limpar /etc/fstab
+# 3.4 Limpar /etc/fstab
 if grep -q '[[:space:]]swap[[:space:]]' /etc/fstab 2>/dev/null; then
   log_step "Removendo entrada de swap do /etc/fstab..."
   sed -i '/[[:space:]]swap[[:space:]]/d' /etc/fstab
@@ -193,7 +270,7 @@ else
   log_ok "/etc/fstab já não possui entradas de swap."
 fi
 
-# 2.6 Remover resume= do GRUB
+# 3.5 Remover resume= do GRUB
 if [ -f "$GRUB_CONFIG" ] && grep -q 'resume=' "$GRUB_CONFIG"; then
   log_step "Removendo parâmetro de resume de hibernação do GRUB..."
   sed -i -E 's/resume=[^ "]+//g; s/  */ /g' "$GRUB_CONFIG"
@@ -204,7 +281,7 @@ else
   log_ok "GRUB já não possui parâmetro resume=."
 fi
 
-# 2.7 Configurar RESUME=none no initramfs
+# 3.6 Configurar RESUME=none no initramfs
 RESUME_CONF="/etc/initramfs-tools/conf.d/resume"
 mkdir -p "$(dirname "$RESUME_CONF")"
 if [ ! -f "$RESUME_CONF" ] || [ "$(cat "$RESUME_CONF" 2>/dev/null)" != "RESUME=none" ]; then
@@ -218,26 +295,19 @@ else
 fi
 
 # -------------------------------------------------------------------------
-# 3. Redimensionar partição raiz (reivindicar espaço da partição de swap a quente)
+# 4. Redimensionar partição raiz (reivindicar espaço da partição de swap a quente)
 # -------------------------------------------------------------------------
-log_info "3/9 Verificando topologia de disco e redimensionamento online..."
+log_info "4/10 Verificando topologia de disco e redimensionamento online..."
 
-ROOT_SOURCE=$(findmnt -no SOURCE /)
-ROOT_PARENT_DEV=""
-
-if [ -n "$ROOT_SOURCE" ]; then
-  ROOT_PARENT_DEV=$(lsblk -lnps -o NAME,TYPE "$ROOT_SOURCE" | grep 'part' | head -n 1 | awk '{print $1}' || true)
-fi
-
-if [ -n "$ROOT_PARENT_DEV" ]; then
-  DISK_DEV=$(lsblk -lnps -o NAME,TYPE "$ROOT_PARENT_DEV" | grep 'disk' | head -n 1 | awk '{print $1}' || true)
+if [ -n "$ROOT_LUKS_DEV" ]; then
+  DISK_DEV=$(lsblk -lnps -o NAME,TYPE "$ROOT_LUKS_DEV" | grep 'disk' | head -n 1 | awk '{print $1}' || true)
 
   if [ -n "$DISK_DEV" ]; then
     PART_LIST=$(lsblk -lnp -o NAME,TYPE "$DISK_DEV" | grep 'part' | awk '{print $1}')
     PART_COUNT=$(echo "$PART_LIST" | wc -l)
     LAST_PART=$(echo "$PART_LIST" | tail -n 1)
 
-    ROOT_PART_NUM=$(echo "$ROOT_PARENT_DEV" | grep -oP '[0-9]+$')
+    ROOT_PART_NUM=$(echo "$ROOT_LUKS_DEV" | grep -oP '[0-9]+$')
     LAST_PART_NUM=$(echo "$LAST_PART" | grep -oP '[0-9]+$')
 
     if [ "$PART_COUNT" -ge 3 ] && [ "$ROOT_PART_NUM" -lt "$LAST_PART_NUM" ]; then
@@ -304,7 +374,7 @@ if [ -n "$ROOT_PARENT_DEV" ]; then
       log_applied "TRIM executado com sucesso."
       record_action
     else
-      log_ok "Partição raiz ($ROOT_PARENT_DEV) já ocupa o espaço final do disco ($DISK_DEV). Nenhum resize necessário."
+      log_ok "Partição raiz ($ROOT_LUKS_DEV) já ocupa o espaço final do disco ($DISK_DEV). Nenhum resize necessário."
     fi
   else
     log_warn "Não foi possível determinar o disco físico subjacente à partição raiz."
@@ -314,9 +384,9 @@ else
 fi
 
 # -------------------------------------------------------------------------
-# 4. Otimizar /etc/crypttab com flags NVMe síncronas e TRIM
+# 5. Otimizar /etc/crypttab com flags NVMe síncronas e TRIM
 # -------------------------------------------------------------------------
-log_info "4/9 Verificando flags de desempenho NVMe no /etc/crypttab..."
+log_info "5/10 Verificando flags de desempenho NVMe no /etc/crypttab..."
 
 CRYPTTAB="/etc/crypttab"
 if [ -f "$CRYPTTAB" ] && [ -s "$CRYPTTAB" ]; then
@@ -334,9 +404,9 @@ else
 fi
 
 # -------------------------------------------------------------------------
-# 5. Configurar sysctl para SSDs e memória
+# 6. Configurar sysctl para SSDs e memória
 # -------------------------------------------------------------------------
-log_info "5/9 Verificando parâmetros de sysctl (/etc/sysctl.d/99-nvme-performance.conf)..."
+log_info "6/10 Verificando parâmetros de sysctl (/etc/sysctl.d/99-nvme-performance.conf)..."
 
 SYSCTL_CONF="/etc/sysctl.d/99-nvme-performance.conf"
 SYSCTL_CONTENT=$(cat << 'EOF'
@@ -358,9 +428,9 @@ else
 fi
 
 # -------------------------------------------------------------------------
-# 6. Configurar regra UDEV para scheduler 'none' em NVMe
+# 7. Configurar regra UDEV para scheduler 'none' em NVMe
 # -------------------------------------------------------------------------
-log_info "6/9 Verificando regra UDEV de scheduler NVMe (/etc/udev/rules.d/60-nvme-scheduler.rules)..."
+log_info "7/10 Verificando regra UDEV de scheduler NVMe (/etc/udev/rules.d/60-nvme-scheduler.rules)..."
 
 UDEV_RULE="/etc/udev/rules.d/60-nvme-scheduler.rules"
 UDEV_CONTENT='ACTION=="add|change", KERNEL=="nvme[0-9]*n[0-9]*", ATTR{queue/scheduler}="none"'
@@ -377,9 +447,9 @@ else
 fi
 
 # -------------------------------------------------------------------------
-# 7. Atualizar initramfs e GRUB se houver alterações
+# 8. Atualizar initramfs e GRUB se houver alterações
 # -------------------------------------------------------------------------
-log_info "7/9 Verificando necessidade de compilação de initramfs e GRUB..."
+log_info "8/10 Verificando necessidade de compilação de initramfs e GRUB..."
 
 if [ "$INITRAMFS_CHANGED" = true ]; then
   log_step "Regerando imagens do initramfs (update-initramfs -u -k all)..."
@@ -400,9 +470,9 @@ else
 fi
 
 # -------------------------------------------------------------------------
-# 8. Instalar e ativar zram (swap comprimido em RAM)
+# 9. Instalar e ativar zram (swap comprimido em RAM)
 # -------------------------------------------------------------------------
-log_info "8/9 Verificando serviço de swap em RAM (zram-tools)..."
+log_info "9/10 Verificando serviço de swap em RAM (zram-tools)..."
 
 if ! dpkg -l zram-tools 2>/dev/null | grep -q '^ii'; then
   log_step "Instalando zram-tools para paginação comprimida em RAM..."
@@ -416,9 +486,9 @@ else
 fi
 
 # -------------------------------------------------------------------------
-# 9. Dependências essenciais de bootstrap
+# 10. Dependências essenciais de bootstrap
 # -------------------------------------------------------------------------
-log_info "9/9 Verificando ferramentas essenciais (pipx, git, curl, sudo)..."
+log_info "10/10 Verificando ferramentas essenciais (pipx, git, curl, sudo)..."
 
 MISSING_PKGS=()
 for pkg in pipx git curl sudo; do
