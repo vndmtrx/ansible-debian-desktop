@@ -144,20 +144,46 @@ else
   log_ok "Nenhum swap ativo em disco físico."
 fi
 
-# 2.2 Limpar /etc/crypttab
-SWAP_MAPPER=""
+# 2.2 Fechar containers de swap mapeados pelo device mapper
+# Busca pelo crypttab ou por mapeamentos abertos em dispositivos de bloco
+SWAP_MAPPERS=()
+if [ -f /etc/crypttab ]; then
+  while read -r name _; do
+    if [ -n "$name" ]; then
+      SWAP_MAPPERS+=("$name")
+    fi
+  done < <(grep 'swap' /etc/crypttab || true)
+fi
+
+# Adiciona qualquer mapper ativo associado a partição swap
+while read -r mname; do
+  if [ -n "$mname" ] && [[ ! " ${SWAP_MAPPERS[*]:-} " =~ " ${mname} " ]]; then
+    SWAP_MAPPERS+=("$mname")
+  fi
+done < <(lsblk -lnp -o NAME,TYPE,FSTYPE | grep -i 'swap' | grep 'crypt' | awk '{print $1}' | sed 's|/dev/mapper/||' || true)
+
+# 2.3 Fechar cada container LUKS de swap antes de mexer nas partições
+for mapper in "${SWAP_MAPPERS[@]:-}"; do
+  if [ -b "/dev/mapper/$mapper" ]; then
+    log_step "Fechando container LUKS da swap (/dev/mapper/$mapper)..."
+    cryptsetup close "$mapper"
+    log_applied "Container /dev/mapper/$mapper fechado."
+    record_action
+  fi
+done
+
+# 2.4 Limpar /etc/crypttab
 if [ -f /etc/crypttab ] && grep -q 'swap' /etc/crypttab; then
-  SWAP_MAPPER=$(grep 'swap' /etc/crypttab | awk '{print $1}' || true)
-  log_step "Removendo entrada de swap do /etc/crypttab ($SWAP_MAPPER)..."
+  log_step "Removendo entrada de swap do /etc/crypttab..."
   sed -i '/swap/d' /etc/crypttab
-  log_applied "Entrada de swap removida do /etc/crypttab."
+  log_applied "Entradas de swap removidas do /etc/crypttab."
   INITRAMFS_CHANGED=true
   record_action
 else
   log_ok "/etc/crypttab já não possui entradas de swap."
 fi
 
-# 2.3 Limpar /etc/fstab
+# 2.5 Limpar /etc/fstab
 if grep -q '[[:space:]]swap[[:space:]]' /etc/fstab 2>/dev/null; then
   log_step "Removendo entrada de swap do /etc/fstab..."
   sed -i '/[[:space:]]swap[[:space:]]/d' /etc/fstab
@@ -167,7 +193,7 @@ else
   log_ok "/etc/fstab já não possui entradas de swap."
 fi
 
-# 2.4 Remover resume= do GRUB
+# 2.6 Remover resume= do GRUB
 if [ -f "$GRUB_CONFIG" ] && grep -q 'resume=' "$GRUB_CONFIG"; then
   log_step "Removendo parâmetro de resume de hibernação do GRUB..."
   sed -i -E 's/resume=[^ "]+//g; s/  */ /g' "$GRUB_CONFIG"
@@ -178,7 +204,7 @@ else
   log_ok "GRUB já não possui parâmetro resume=."
 fi
 
-# 2.5 Configurar RESUME=none no initramfs
+# 2.7 Configurar RESUME=none no initramfs
 RESUME_CONF="/etc/initramfs-tools/conf.d/resume"
 mkdir -p "$(dirname "$RESUME_CONF")"
 if [ ! -f "$RESUME_CONF" ] || [ "$(cat "$RESUME_CONF" 2>/dev/null)" != "RESUME=none" ]; then
@@ -189,14 +215,6 @@ if [ ! -f "$RESUME_CONF" ] || [ "$(cat "$RESUME_CONF" 2>/dev/null)" != "RESUME=n
   record_action
 else
   log_ok "Initramfs já configurado com RESUME=none."
-fi
-
-# 2.6 Fechar container LUKS da swap se aberto
-if [ -n "$SWAP_MAPPER" ] && [ -b "/dev/mapper/$SWAP_MAPPER" ]; then
-  log_step "Fechando container LUKS da swap (/dev/mapper/$SWAP_MAPPER)..."
-  cryptsetup close "$SWAP_MAPPER"
-  log_applied "Container /dev/mapper/$SWAP_MAPPER fechado."
-  record_action
 fi
 
 # -------------------------------------------------------------------------
@@ -225,6 +243,18 @@ if [ -n "$ROOT_PARENT_DEV" ]; then
     if [ "$PART_COUNT" -ge 3 ] && [ "$ROOT_PART_NUM" -lt "$LAST_PART_NUM" ]; then
       log_step "Detectada partição residual pós-raiz: $LAST_PART (p$LAST_PART_NUM) no disco $DISK_DEV."
 
+      # Assegurar que qualquer mapper ou holder preso na partição residual seja desativado
+      if [ -b "$LAST_PART" ]; then
+        HOLDERS=$(lsblk -lnp -o NAME "$LAST_PART" | grep -v "^${LAST_PART}$" || true)
+        for h in $HOLDERS; do
+          if [[ "$h" == /dev/mapper/* ]]; then
+            hname="${h##*/}"
+            log_step "Fechando holder ativo $h..."
+            cryptsetup close "$hname" 2>/dev/null || dmsetup remove -f "$hname" 2>/dev/null || true
+          fi
+        done
+      fi
+
       if ! command -v parted >/dev/null 2>&1; then
         log_step "Instalando pacote parted..."
         apt-get update -qq
@@ -232,12 +262,17 @@ if [ -n "$ROOT_PARENT_DEV" ]; then
       fi
 
       log_step "Deletando partição residual $LAST_PART_NUM ($LAST_PART)..."
-      parted -s "$DISK_DEV" rm "$LAST_PART_NUM"
-      log_applied "Partição $LAST_PART_NUM removida da tabela GPT."
+      parted -s "$DISK_DEV" rm "$LAST_PART_NUM" || true
+      log_applied "Comando parted rm executado na partição $LAST_PART_NUM."
 
       log_step "Expandindo partição física $ROOT_PART_NUM para 100% do disco..."
-      parted -s "$DISK_DEV" resizepart "$ROOT_PART_NUM" 100%
-      log_applied "Partição física $ROOT_PARENT_DEV expandida para 100%."
+      parted -s "$DISK_DEV" resizepart "$ROOT_PART_NUM" 100% || true
+      log_applied "Comando parted resizepart executado para 100%."
+
+      # Notificar o kernel sobre a nova geometria da partição
+      if command -v partprobe >/dev/null 2>&1; then
+        partprobe "$DISK_DEV" 2>/dev/null || true
+      fi
 
       # Redimensionar LUKS a quente
       if [[ "$ROOT_SOURCE" == /dev/mapper/* ]]; then
