@@ -50,13 +50,23 @@ fi
 SETTINGS_CONF="/etc/calamares/settings.conf"
 if [ -f "$SETTINGS_CONF" ]; then
   if ! grep -q "shellprocess@grubcrypt" "$SETTINGS_CONF"; then
-    echo "  [+] Injetando shellprocess@grubcrypt após fstab no settings.conf..."
+    echo "  [+] Injetando shellprocess@grubcrypt após fstab..."
     sudo sed -i '/- fstab/a \  - shellprocess@grubcrypt' "$SETTINGS_CONF"
   fi
 
+  if ! grep -q "shellprocess@sysctl_nvme" "$SETTINGS_CONF"; then
+    echo "  [+] Injetando shellprocess@sysctl_nvme após shellprocess@grubcrypt..."
+    sudo sed -i '/- shellprocess@grubcrypt/a \  - shellprocess@sysctl_nvme' "$SETTINGS_CONF"
+  fi
+
   if ! grep -q "shellprocess@initramfs" "$SETTINGS_CONF"; then
-    echo "  [+] Injetando shellprocess@initramfs após bootloader no settings.conf..."
+    echo "  [+] Injetando shellprocess@initramfs após bootloader..."
     sudo sed -i '/- bootloader/a \  - shellprocess@initramfs' "$SETTINGS_CONF"
+  fi
+
+  if ! grep -q "shellprocess@bootstrap" "$SETTINGS_CONF"; then
+    echo "  [+] Injetando shellprocess@bootstrap após shellprocess@initramfs..."
+    sudo sed -i '/- shellprocess@initramfs/a \  - shellprocess@bootstrap' "$SETTINGS_CONF"
   fi
 fi
 
