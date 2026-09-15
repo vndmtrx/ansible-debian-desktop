@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Script: setup-ventoy.sh
-# Descrição: Sincroniza scripts e módulos do Calamares, repositório Ansible e
-#            backups criptografados para a mídia Ventoy de forma declarativa e idempotente.
+# Descrição: Sincroniza scripts, módulos do Calamares, repositório Ansible e
+#            backups criptografados para a mídia Ventoy, gerando automaticamente
+#            o pacote de Ventoy Injection Plugin e ventoy.json para boot 100% automático.
 # ==============================================================================
 set -euo pipefail
 
@@ -42,7 +43,7 @@ if [ -z "$VENTOY_MOUNT" ] || [ ! -d "$VENTOY_MOUNT" ]; then
 fi
 
 echo "==> Mídia Ventoy ativa em: $VENTOY_MOUNT"
-sudo mkdir -p "$VENTOY_MOUNT/scripts" "$VENTOY_MOUNT/scripts/modules"
+sudo mkdir -p "$VENTOY_MOUNT/scripts" "$VENTOY_MOUNT/scripts/modules" "$VENTOY_MOUNT/ventoy"
 
 # -------------------------------------------------------------------------
 # 2. Função declarativa de sincronização com comparação de hash MD5
@@ -83,7 +84,7 @@ sync_declarative_file() {
 echo "==> Sincronizando scripts e módulos do Calamares..."
 
 if [ -d "$VENTOY_SOURCE_DIR" ]; then
-  # Sincroniza scripts raiz (apply-calamares.sh, post-install.sh)
+  # Sincroniza scripts raiz (apply-calamares.sh)
   for sfile in "$VENTOY_SOURCE_DIR"/*.sh; do
     [ -f "$sfile" ] || continue
     sync_declarative_file "$sfile" "$VENTOY_MOUNT/scripts/$(basename "$sfile")"
@@ -137,6 +138,100 @@ if [ -d "$LOCAL_BACKUP_DIR" ]; then
     echo "==> Sincronizado(s) $backup_count novo(s) arquivo(s) de backup."
   fi
 fi
+
+# -------------------------------------------------------------------------
+# 6. Criação do pacote de Injeção do Ventoy (Ventoy Injection Plugin)
+# -------------------------------------------------------------------------
+echo "==> Gerando pacote do Ventoy Injection Plugin (/ventoy/scripts-injection.tar.gz)..."
+TMP_STAGE=$(mktemp -d)
+trap 'rm -rf "$TMP_STAGE"' EXIT
+
+# Estrutura dentro do Live OS
+INJECT_SCRIPTS_DIR="$TMP_STAGE/opt/ventoy-scripts"
+mkdir -p "$INJECT_SCRIPTS_DIR" "$TMP_STAGE/etc/skel/Desktop" "$TMP_STAGE/home/user/Desktop"
+
+# 1. Copia apply-calamares e módulos
+cp "$VENTOY_SOURCE_DIR/apply-calamares.sh" "$INJECT_SCRIPTS_DIR/"
+chmod +x "$INJECT_SCRIPTS_DIR/apply-calamares.sh"
+cp -r "$VENTOY_SOURCE_DIR/modules" "$INJECT_SCRIPTS_DIR/"
+
+# 2. Copia clone do repositório
+cp -r "$REPO_TARGET" "$INJECT_SCRIPTS_DIR/"
+
+# 3. Copia backups criptografados (se existirem)
+if [ -d "$VENTOY_BACKUP_DIR" ] && [ "$(ls -A "$VENTOY_BACKUP_DIR" 2>/dev/null)" ]; then
+  mkdir -p "$INJECT_SCRIPTS_DIR/backup"
+  cp -p "$VENTOY_BACKUP_DIR"/* "$INJECT_SCRIPTS_DIR/backup/" 2>/dev/null || true
+fi
+
+# 4. Cria atalho de Desktop no Live CD
+DESKTOP_ENTRY=$(cat << 'EOF'
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=⚡ Instalar Debian Customizado (Calamares)
+Comment=Aplica módulos declarativos e abre o instalador Calamares
+Exec=sudo /opt/ventoy-scripts/apply-calamares.sh
+Icon=system-software-install
+Terminal=true
+Categories=System;
+EOF
+)
+
+echo "$DESKTOP_ENTRY" > "$TMP_STAGE/etc/skel/Desktop/instalar-debian.desktop"
+echo "$DESKTOP_ENTRY" > "$TMP_STAGE/home/user/Desktop/instalar-debian.desktop"
+chmod +x "$TMP_STAGE/etc/skel/Desktop/instalar-debian.desktop" "$TMP_STAGE/home/user/Desktop/instalar-debian.desktop"
+
+# Compacta pacote para o Ventoy
+sudo tar -czf "$VENTOY_MOUNT/ventoy/scripts-injection.tar.gz" -C "$TMP_STAGE" .
+
+# -------------------------------------------------------------------------
+# 7. Configuração declarativa do ventoy.json
+# -------------------------------------------------------------------------
+echo "==> Configurando /ventoy/ventoy.json..."
+ISO_LIST=()
+while IFS= read -r -d '' isopath; do
+  rel_iso="/${isopath#$VENTOY_MOUNT/}"
+  ISO_LIST+=("$rel_iso")
+done < <(find "$VENTOY_MOUNT" -maxdepth 2 -type f -iname "*.iso" -print0 2>/dev/null)
+
+TMP_JSON=$(mktemp)
+cat << 'EOF' > "$TMP_JSON"
+{
+    "injection": [
+EOF
+
+first=true
+if [ ${#ISO_LIST[@]} -gt 0 ]; then
+  for iso in "${ISO_LIST[@]}"; do
+    if [ "$first" = true ]; then
+      first=false
+    else
+      echo "," >> "$TMP_JSON"
+    fi
+    cat << EOF >> "$TMP_JSON"
+        {
+            "image": "$iso",
+            "archive": "/ventoy/scripts-injection.tar.gz"
+        }
+EOF
+  done
+else
+  cat << 'EOF' >> "$TMP_JSON"
+        {
+            "image": "/debian-live-13.7.0-amd64-gnome.iso",
+            "archive": "/ventoy/scripts-injection.tar.gz"
+        }
+EOF
+fi
+
+cat << 'EOF' >> "$TMP_JSON"
+    ]
+}
+EOF
+
+sudo cp "$TMP_JSON" "$VENTOY_MOUNT/ventoy/ventoy.json"
+rm -f "$TMP_JSON"
 
 sync
 echo "==> [Ventoy-Setup] Concluído com sucesso na mídia em $VENTOY_MOUNT."
