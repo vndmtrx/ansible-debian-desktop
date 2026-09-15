@@ -3,9 +3,15 @@
 # Script: post-install.sh
 # Descrição: Otimizador pós-instalação idempotente para Debian 13 (Trixie)
 #            Executa no primeiro boot após instalação padrão do Calamares.
-#            Aplica configurações de NVMe, GRUB, Btrfs/LUKS, zram e bootstrap.
+#            Aplica configurações de NVMe, GRUB, LUKS, ext4/btrfs, zram e bootstrap.
 # ==============================================================================
 set -euo pipefail
+
+# Garantir execução como root
+if [ "$(id -u)" -ne 0 ]; then
+  echo "❌ Este script deve ser executado como root (use sudo ./post-install.sh)" >&2
+  exit 1
+fi
 
 echo "==> [Post-Install] Iniciando otimizações de sistema..."
 
@@ -14,25 +20,35 @@ GRUB_CHANGED=false
 INITRAMFS_CHANGED=false
 
 # -------------------------------------------------------------------------
-# 1. Habilitar suporte a cryptodisk no GRUB
+# 1. Habilitar suporte a cryptodisk e pré-carregar módulos no GRUB
 # -------------------------------------------------------------------------
 if [ -f "$GRUB_CONFIG" ]; then
   if grep -q "^GRUB_ENABLE_CRYPTODISK=" "$GRUB_CONFIG"; then
-    sed -i 's/^GRUB_ENABLE_CRYPTODISK=.*/GRUB_ENABLE_CRYPTODISK=y/' "$GRUB_CONFIG"
+    if ! grep -q "^GRUB_ENABLE_CRYPTODISK=y" "$GRUB_CONFIG"; then
+      sed -i 's/^GRUB_ENABLE_CRYPTODISK=.*/GRUB_ENABLE_CRYPTODISK=y/' "$GRUB_CONFIG"
+      GRUB_CHANGED=true
+    fi
   else
     echo "GRUB_ENABLE_CRYPTODISK=y" >> "$GRUB_CONFIG"
+    GRUB_CHANGED=true
   fi
 
-  # Pré-carregar módulos LUKS/Btrfs na imagem EFI do GRUB
+  # Pré-carregar módulos LUKS na imagem EFI do GRUB
+  PRELOAD_TARGET='GRUB_PRELOAD_MODULES="luks crypto gcry_rijndael gcry_sha256 btrfs"'
   if grep -q "^GRUB_PRELOAD_MODULES=" "$GRUB_CONFIG"; then
-    sed -i 's/^GRUB_PRELOAD_MODULES=.*/GRUB_PRELOAD_MODULES="luks crypto gcry_rijndael gcry_sha256 btrfs"/' "$GRUB_CONFIG"
+    CURRENT_PRELOAD=$(grep "^GRUB_PRELOAD_MODULES=" "$GRUB_CONFIG")
+    if [ "$CURRENT_PRELOAD" != "$PRELOAD_TARGET" ]; then
+      sed -i "s|^GRUB_PRELOAD_MODULES=.*|$PRELOAD_TARGET|" "$GRUB_CONFIG"
+      GRUB_CHANGED=true
+    fi
   else
-    echo 'GRUB_PRELOAD_MODULES="luks crypto gcry_rijndael gcry_sha256 btrfs"' >> "$GRUB_CONFIG"
+    echo "$PRELOAD_TARGET" >> "$GRUB_CONFIG"
+    GRUB_CHANGED=true
   fi
 
-  # Remover parâmetros de zswap residuais (se existirem de uma execução anterior)
+  # Remover parâmetros de zswap residuais (se existirem)
   if grep -q "zswap\.enabled" "$GRUB_CONFIG"; then
-    echo "==> Removendo parâmetros de zswap do GRUB (substituído por zram)..."
+    echo "==> Removendo parâmetros de zswap do GRUB..."
     sed -i -E 's/zswap\.[^ "]+//g; s/  */ /g' "$GRUB_CONFIG"
     GRUB_CHANGED=true
   fi
@@ -56,119 +72,127 @@ if [ -f "$GRUB_CONFIG" ]; then
 fi
 
 # -------------------------------------------------------------------------
-# 2. Desativar swap em disco e eliminar partição de swap
+# 2. Desativar swap em disco e limpar referências (/etc/fstab, crypttab, resume)
 # -------------------------------------------------------------------------
-SWAP_ACTIVE=$(swapon --show --noheadings 2>/dev/null | grep -v zram | head -n 1 || true)
-SWAP_PARTITION=$(lsblk -lnp -o NAME,FSTYPE | grep -i 'swap' | awk '{print $1}' | head -n 1 || true)
-SWAP_LUKS_PARENT=""
+# Descobrir dispositivos ou partições de swap físicos (excluindo zram)
+SWAP_DEVS=$(swapon --show=NAME --noheadings 2>/dev/null | grep -v 'zram' || true)
+if [ -n "$SWAP_DEVS" ]; then
+  echo "==> Desativando swap ativo em disco..."
+  for dev in $SWAP_DEVS; do
+    swapoff "$dev"
+  done
+fi
 
-# Detectar se existe partição de swap (criptografada ou não)
-if [ -n "$SWAP_ACTIVE" ] || grep -q 'swap' /etc/fstab 2>/dev/null; then
-  echo "==> Desativando swap em disco..."
+SWAP_MAPPER=""
+if [ -f /etc/crypttab ] && grep -q 'swap' /etc/crypttab; then
+  SWAP_MAPPER=$(grep 'swap' /etc/crypttab | awk '{print $1}' || true)
+  echo "==> Removendo referências de swap do /etc/crypttab..."
+  sed -i '/swap/d' /etc/crypttab
+  INITRAMFS_CHANGED=true
+fi
 
-  # Desativar swap ativo
-  swapoff -a 2>/dev/null || true
+if grep -q '[[:space:]]swap[[:space:]]' /etc/fstab 2>/dev/null; then
+  echo "==> Removendo referências de swap do /etc/fstab..."
+  sed -i '/[[:space:]]swap[[:space:]]/d' /etc/fstab
+fi
 
-  # Identificar o container LUKS pai da swap (se existir)
-  if [ -n "$SWAP_PARTITION" ]; then
-    SWAP_LUKS_PARENT=$(lsblk -lnps -o NAME,TYPE "$SWAP_PARTITION" | grep 'part' | awk '{print $1}' | head -n 1 || true)
-  fi
+if [ -f "$GRUB_CONFIG" ] && grep -q 'resume=' "$GRUB_CONFIG"; then
+  echo "==> Removendo parâmetro resume= do GRUB..."
+  sed -i -E 's/resume=[^ "]+//g; s/  */ /g' "$GRUB_CONFIG"
+  GRUB_CHANGED=true
+fi
 
-  # Remover linhas de swap do fstab
-  if grep -q 'swap' /etc/fstab; then
-    echo "==> Removendo referências de swap do /etc/fstab..."
-    sed -i '/swap/d' /etc/fstab
-  fi
+# Desativar resume de hibernação no initramfs (evita erro de cryptroot na compilação)
+RESUME_CONF="/etc/initramfs-tools/conf.d/resume"
+mkdir -p "$(dirname "$RESUME_CONF")"
+if [ ! -f "$RESUME_CONF" ] || [ "$(cat "$RESUME_CONF" 2>/dev/null)" != "RESUME=none" ]; then
+  echo "==> Configurando RESUME=none em $RESUME_CONF..."
+  echo "RESUME=none" > "$RESUME_CONF"
+  INITRAMFS_CHANGED=true
+fi
 
-  # Remover linhas de swap do crypttab
-  if grep -q 'swap' /etc/crypttab 2>/dev/null; then
-    echo "==> Removendo referências de swap do /etc/crypttab..."
-    # Identificar o nome do mapper da swap pra fechar depois
-    SWAP_MAPPER=$(grep 'swap' /etc/crypttab | awk '{print $1}' || true)
-    sed -i '/swap/d' /etc/crypttab
-    INITRAMFS_CHANGED=true
-  fi
-
-  # Remover parâmetro resume= do GRUB
-  if grep -q 'resume=' "$GRUB_CONFIG" 2>/dev/null; then
-    echo "==> Removendo parâmetro resume= do GRUB..."
-    sed -i -E 's/resume=[^ "]+//g; s/  */ /g' "$GRUB_CONFIG"
-    GRUB_CHANGED=true
-  fi
-
-  # Fechar container LUKS da swap (se aberto)
-  if [ -n "$SWAP_MAPPER" ] && [ -b "/dev/mapper/$SWAP_MAPPER" ]; then
-    echo "==> Fechando container LUKS da swap ($SWAP_MAPPER)..."
-    cryptsetup close "$SWAP_MAPPER" 2>/dev/null || true
-  fi
+# Fechar mapper de swap se aberto
+if [ -n "$SWAP_MAPPER" ] && [ -b "/dev/mapper/$SWAP_MAPPER" ]; then
+  echo "==> Fechando container LUKS da swap (/dev/mapper/$SWAP_MAPPER)..."
+  cryptsetup close "$SWAP_MAPPER"
 fi
 
 # -------------------------------------------------------------------------
-# 3. Redimensionar partição raiz (absorver espaço da swap removida)
+# 3. Redimensionar partição raiz (reivindicar espaço da partição de swap a quente)
 # -------------------------------------------------------------------------
-# Detecta o disco NVMe principal
-NVME_DISK=$(lsblk -dnp -o NAME,TYPE | grep 'disk' | grep 'nvme' | awk '{print $1}' | head -n 1 || true)
+# Detectar disco onde a raiz reside
+ROOT_SOURCE=$(findmnt -no SOURCE /)
+ROOT_PARENT_DEV=""
 
-if [ -n "$NVME_DISK" ] && [ -n "$SWAP_LUKS_PARENT" ]; then
-  # Contar partições no disco (excluindo a EFI e a raiz)
-  PART_COUNT=$(lsblk -lnp -o NAME,TYPE "$NVME_DISK" | grep 'part' | wc -l)
-  ROOT_MAPPER=$(findmnt -no SOURCE /)
+if [ -n "$ROOT_SOURCE" ]; then
+  # Identifica a partição física subjacente (ex: /dev/nvme0n1p2 ou /dev/sda2)
+  ROOT_PARENT_DEV=$(lsblk -lnps -o NAME,TYPE "$ROOT_SOURCE" | grep 'part' | head -n 1 | awk '{print $1}' || true)
+fi
 
-  if [ "$PART_COUNT" -ge 3 ]; then
-    echo "==> Detectada partição de swap em $SWAP_LUKS_PARENT. Redimensionando disco..."
+if [ -n "$ROOT_PARENT_DEV" ]; then
+  DISK_DEV=$(lsblk -lnps -o NAME,TYPE "$ROOT_PARENT_DEV" | grep 'disk' | head -n 1 | awk '{print $1}' || true)
 
-    # Instalar parted se necessário
-    if ! command -v parted >/dev/null 2>&1; then
-      apt-get update -qq
-      apt-get install -y -qq parted
-    fi
+  if [ -n "$DISK_DEV" ]; then
+    # Listar partições no disco ordenadas por número
+    PART_LIST=$(lsblk -lnp -o NAME,TYPE "$DISK_DEV" | grep 'part' | awk '{print $1}')
+    PART_COUNT=$(echo "$PART_LIST" | wc -l)
+    LAST_PART=$(echo "$PART_LIST" | tail -n 1)
 
-    # Número da partição swap (último segmento: nvme0n1p3 -> 3)
-    SWAP_PART_NUM=$(echo "$SWAP_LUKS_PARENT" | grep -oP 'p\K[0-9]+$')
-    # Número da partição raiz (penúltima: nvme0n1p2 -> 2)
-    ROOT_PART_NUM=$((SWAP_PART_NUM - 1))
+    # Obter número da partição raiz e da última partição
+    ROOT_PART_NUM=$(echo "$ROOT_PARENT_DEV" | grep -oP '[0-9]+$')
+    LAST_PART_NUM=$(echo "$LAST_PART" | grep -oP '[0-9]+$')
 
-    echo "==> Removendo partição $SWAP_PART_NUM e expandindo partição $ROOT_PART_NUM..."
-    parted -s "$NVME_DISK" rm "$SWAP_PART_NUM"
-    parted -s "$NVME_DISK" resizepart "$ROOT_PART_NUM" 100%
+    # Se existem 3+ partições e a raiz não é a última partição, a última é a partição de swap morta
+    if [ "$PART_COUNT" -ge 3 ] && [ "$ROOT_PART_NUM" -lt "$LAST_PART_NUM" ]; then
+      echo "==> Detectada partição morta $LAST_PART (p$LAST_PART_NUM). Redimensionando disco..."
 
-    # Expandir container LUKS e filesystem a quente
-    if [ -n "$ROOT_MAPPER" ]; then
-      MAPPER_NAME="${ROOT_MAPPER##*/}"
-      echo "==> Expandindo container LUKS ($MAPPER_NAME)..."
-      cryptsetup resize "$MAPPER_NAME"
+      if ! command -v parted >/dev/null 2>&1; then
+        echo "==> Instalando parted..."
+        apt-get update -qq
+        apt-get install -y -qq parted
+      fi
 
-      # Detectar filesystem e expandir adequadamente
+      echo "==> Removendo partição $LAST_PART_NUM ($LAST_PART)..."
+      parted -s "$DISK_DEV" rm "$LAST_PART_NUM"
+
+      echo "==> Expandindo partição raiz $ROOT_PART_NUM para 100% do disco..."
+      parted -s "$DISK_DEV" resizepart "$ROOT_PART_NUM" 100%
+
+      # Redimensionar container LUKS a quente
+      if [[ "$ROOT_SOURCE" == /dev/mapper/* ]]; then
+        MAPPER_NAME="${ROOT_SOURCE##*/}"
+        echo "==> Redimensionando container LUKS ($MAPPER_NAME) a quente..."
+        cryptsetup resize "$MAPPER_NAME"
+      fi
+
+      # Redimensionar sistema de arquivos online
       ROOT_FSTYPE=$(findmnt -no FSTYPE /)
+      echo "==> Expandindo sistema de arquivos ($ROOT_FSTYPE) a quente..."
       case "$ROOT_FSTYPE" in
         ext4)
-          echo "==> Expandindo ext4 em $ROOT_MAPPER..."
-          resize2fs "$ROOT_MAPPER"
+          resize2fs "$ROOT_SOURCE"
           ;;
         btrfs)
-          echo "==> Expandindo btrfs em /..."
           btrfs filesystem resize max /
           ;;
         *)
-          echo "⚠️  Filesystem '$ROOT_FSTYPE' não suportado para resize automático."
+          echo "⚠️  Filesystem '$ROOT_FSTYPE' não suportado para expansão automática."
           ;;
       esac
-    fi
 
-    echo "==> Executando TRIM nos blocos recém-liberados..."
-    fstrim -av 2>/dev/null || true
-  fi
-else
-  if [ -n "$NVME_DISK" ]; then
-    echo "==> Nenhuma partição de swap separada detectada. Redimensionamento não necessário."
+      echo "==> Executando TRIM em blocos liberados..."
+      fstrim -av
+    else
+      echo "==> Partição raiz já ocupa o espaço contíguo do disco (nenhuma partição residual)."
+    fi
   fi
 fi
 
 # -------------------------------------------------------------------------
-# 4. Otimizar crypttab com flags NVMe síncronas e TRIM
+# 4. Otimizar /etc/crypttab com flags NVMe síncronas e TRIM
 # -------------------------------------------------------------------------
 CRYPTTAB="/etc/crypttab"
-if [ -f "$CRYPTTAB" ]; then
+if [ -f "$CRYPTTAB" ] && [ -s "$CRYPTTAB" ]; then
   if ! grep -q "no-read-workqueue" "$CRYPTTAB"; then
     echo "==> Otimizando /etc/crypttab com flags NVMe síncronas..."
     sed -i -E 's/(luks,initramfs|luks)/\1,discard,no-read-workqueue,no-write-workqueue/' "$CRYPTTAB"
@@ -179,18 +203,7 @@ if [ -f "$CRYPTTAB" ]; then
 fi
 
 # -------------------------------------------------------------------------
-# 5. Desativar resume de hibernação no initramfs
-# -------------------------------------------------------------------------
-RESUME_CONF="/etc/initramfs-tools/conf.d/resume"
-if [ ! -f "$RESUME_CONF" ] || [ "$(cat "$RESUME_CONF" 2>/dev/null)" != "RESUME=none" ]; then
-  echo "==> Desativando resume de hibernação no initramfs..."
-  mkdir -p "$(dirname "$RESUME_CONF")"
-  echo "RESUME=none" > "$RESUME_CONF"
-  INITRAMFS_CHANGED=true
-fi
-
-# -------------------------------------------------------------------------
-# 6. Configurar sysctl para SSDs e memória
+# 5. Configurar sysctl para SSDs e memória
 # -------------------------------------------------------------------------
 SYSCTL_CONF="/etc/sysctl.d/99-nvme-performance.conf"
 SYSCTL_CONTENT=$(cat << 'EOF'
@@ -201,14 +214,14 @@ vm.vfs_cache_pressure = 50
 EOF
 )
 if [ ! -f "$SYSCTL_CONF" ] || [ "$(cat "$SYSCTL_CONF" 2>/dev/null)" != "$SYSCTL_CONTENT" ]; then
-  echo "==> Aplicando parâmetros de sysctl para NVMe..."
+  echo "==> Aplicando parâmetros de sysctl..."
   mkdir -p "$(dirname "$SYSCTL_CONF")"
   echo "$SYSCTL_CONTENT" > "$SYSCTL_CONF"
-  sysctl --system > /dev/null 2>&1 || true
+  sysctl --system > /dev/null
 fi
 
 # -------------------------------------------------------------------------
-# 7. Configurar regra UDEV para scheduler 'none' em NVMe
+# 6. Configurar regra UDEV para scheduler 'none' em NVMe
 # -------------------------------------------------------------------------
 UDEV_RULE="/etc/udev/rules.d/60-nvme-scheduler.rules"
 UDEV_CONTENT='ACTION=="add|change", KERNEL=="nvme[0-9]*n[0-9]*", ATTR{queue/scheduler}="none"'
@@ -216,11 +229,12 @@ if [ ! -f "$UDEV_RULE" ] || [ "$(cat "$UDEV_RULE" 2>/dev/null)" != "$UDEV_CONTEN
   echo "==> Configurando scheduler 'none' para NVMe em udev..."
   mkdir -p "$(dirname "$UDEV_RULE")"
   echo "$UDEV_CONTENT" > "$UDEV_RULE"
-  udevadm control --reload-rules > /dev/null 2>&1 || true
+  udevadm control --reload-rules
+  udevadm trigger --subsystem-match=block
 fi
 
 # -------------------------------------------------------------------------
-# 8. Atualizar initramfs e GRUB
+# 7. Atualizar initramfs e GRUB se houver alterações
 # -------------------------------------------------------------------------
 if [ "$INITRAMFS_CHANGED" = true ]; then
   echo "==> Atualizando initramfs..."
@@ -232,24 +246,28 @@ if [ "$GRUB_CHANGED" = true ]; then
 fi
 
 # -------------------------------------------------------------------------
-# 9. Instalar e ativar zram (swap comprimido em RAM)
+# 8. Instalar e ativar zram (swap comprimido em RAM)
 # -------------------------------------------------------------------------
 if ! dpkg -l zram-tools 2>/dev/null | grep -q '^ii'; then
   echo "==> Instalando zram-tools para swap comprimido em RAM..."
   apt-get update -qq
-  apt-get install -y -qq zram-tools
-  # O serviço zramswap.service é habilitado automaticamente na instalação
+  apt-get install -y zram-tools
+  systemctl restart zramswap.service || true
 else
   echo "==> zram-tools já instalado."
 fi
 
 # -------------------------------------------------------------------------
-# 10. Dependências essenciais de bootstrap
+# 9. Dependências essenciais de bootstrap
 # -------------------------------------------------------------------------
 echo "==> Verificando dependências essenciais (pipx, git, curl, sudo)..."
 if ! command -v pipx >/dev/null 2>&1 || ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
   apt-get update -qq
-  apt-get install -y -qq pipx git curl sudo
+  apt-get install -y pipx git curl sudo
 fi
 
-echo "==> [Post-Install] Otimizações aplicadas com sucesso!"
+echo ""
+echo "✅ [Post-Install] Otimizações aplicadas com sucesso!"
+echo "   - Swap em disco eliminado e espaço absorvido pela raiz."
+echo "   - zram ativo para paginação em RAM."
+echo "   - GRUB e crypttab calibrados para NVMe + LUKS."
