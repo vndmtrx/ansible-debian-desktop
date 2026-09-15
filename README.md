@@ -223,8 +223,9 @@ sudo ~/ventoy/scripts/apply-calamares.sh
 mkdir -p ~/ventoy && sudo mount -o ro $(sudo losetup -r -f --show /dev/sda1) ~/ventoy && sudo ~/ventoy/scripts/apply-calamares.sh
 ```
 
-Após concluir a instalação gráfica pelo Calamares, o `apply-calamares.sh` executa automaticamente as otimizações do [`post-install.sh`](post-install.sh) no target. Caso prefira aplicar diretamente no primeiro boot do sistema recém-instalado:
+Após a instalação gráfica, o repositório é entregue em `~/du/dev/github/ansible-debian-desktop`. No primeiro boot do sistema recém-instalado, execute o script de otimização de baixo nível:
 ```bash
+cd ~/du/dev/github/ansible-debian-desktop
 sudo ./post-install.sh
 ```
 
