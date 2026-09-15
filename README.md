@@ -55,12 +55,10 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
   - Binários locais consolidados em `~/.local/bin` (integrado ao `$PATH`).
   - Criação automática dos diretórios de trabalho: `~/du/dev`, `~/du/conf`, `~/du/backups`, `~/du/dev/tensor`, `~/du/dev/github` e `~/du/dev/docker-stacks`.
 - **Tilix:** Terminal em mosaico com suporte à integração VTE (`/etc/profile.d/vte-2.91.sh` e link `/etc/profile.d/vte.sh`).
-- **Backup de Extensões & GNOME (`salvar-extensoes`):** Comando utilitário que exporta as configurações ativas do GNOME e de todas as extensões para `~/du/conf/extensoes_YYYYMMDDHHMMSS.dconf`.
-- **Backup & Restauração de Segurança (`backup.sh` / `backup-seguranca`):**
-  - Utilitário dedicado para exportar e restaurar credenciais e configurações de **Git, SSH e GnuPG**:
-    - `./backup.sh backup`: Coleta `~/.gitconfig`, `~/.ssh/` e exporta chaves e trust do GPG, gerando o pacote `YYYYMMDD_HHMM.tar.bz2` diretamente em `~/du/backups/` (permissão `0700`), acompanhado de hash `*.sha256` e assinatura digital `*.asc`.
-    - `./backup.sh restore [arquivo]`: Restaura a partir do arquivo mais recente em `~/du/backups/` (ou arquivo/caminho informado), valida integridade SHA-256 e assinatura GPG, inspeciona substituições de arquivos existentes (`~/.gitconfig`, `~/.ssh/*`), solicita confirmação explícita, reaplica as permissões seguras (`0700`, `0600`, `0644`) e oferece carregar automaticamente as chaves no `ssh-agent`.
-    - `./backup.sh add-keys`: Identifica e carrega todas as chaves privadas SSH encontradas em `~/.ssh/` no `ssh-agent` via `ssh-add` (iniciando o agente se necessário).
+- **Backup & Restauração de Segurança (`backup.sh` & `restore.sh`):**
+  - **`./backup.sh` (`backup-seguranca`):** Coleta seletiva e segura de credenciais SSH (`~/.ssh/`), chaveiros GnuPG (chaves públicas, secretas e ownertrust), chaveiros do desktop GNOME (`~/.local/share/keyrings/`), Git e dumps cirúrgicos do `dconf` (extensões, atalhos de janelas e interface). O arquivo é compactado em `.tar.bz2`, criptografado simetricamente por senha via **GPG AES-256** gerando `~/du/backups/YYYYMMDD_HHMMSS.tar.bz2.gpg`, acompanhado de checksum `*.sha256` e assinatura digital `*.asc`.
+  - **`./restore.sh` (`restore-seguranca`):** Localiza automaticamente o backup mais recente em `~/du/backups/` (ou em caminho informado explicitamente como argumento), valida o checksum SHA-256, solicita a senha para descriptografar sem exigir chave privada pré-instalada, exibe relatório de componentes e restaura tudo com permissões restritas (`0700`, `0600`, `0644`) e injeção do `dconf`.
+  - **`salvar-extensoes`:** Comando utilitário em `~/.local/bin/salvar-extensoes` para exportar rapidamente as preferências do GNOME para `~/du/conf/`.
 - **Aliases de Produtividade & IA:**
   - Atalhos de terminal (`ls="eza"`, `ts="tspin"`, `jc="journalctl | tspin"`, etc.).
   - **TensorFlow com Docker (`tensor`):** Sobe um servidor Jupyter com TensorFlow oficial mapeando `~/du/dev/tensor` na porta 8888 em primeiro plano (`-it --rm`) sem sujar o Python do host.
@@ -175,6 +173,31 @@ Você pode repassar argumentos e tags diretamente pelo `./bootstrap.sh` (ou via 
 
 # Executar tudo, exceto virtualização
 ./bootstrap.sh --skip-tags virt
+```
+
+---
+
+## 🚀 Day-0 / Day-1: Preparação de Mídia com Ventoy e Calamares (`setup-ventoy.sh`)
+
+Para que a máquina física já nasça com particionamento **Btrfs**, subvolumes dedicados (`/@`, `/@home`, `/@log`, `/@snapshots`), **LUKS2** otimizado (PBKDF2 em 500ms para descriptografia instantânea no GRUB) e sincronização do repositório, utilize o script declarativo [`setup-ventoy.sh`](file:///home/rolim/du/dev/github/ansible-debian-desktop/setup-ventoy.sh):
+
+```bash
+# Com o pendrive Ventoy plugado no computador:
+chmod +x setup-ventoy.sh
+./setup-ventoy.sh
+```
+
+O script:
+1. Monta a partição de dados do Ventoy de forma idempotente.
+2. Injeta as configurações declarativas do Calamares (`fstab.conf`, `partition.conf`, `shellprocess-ansible.conf`, etc.).
+3. Versiona arquivos modificados (`.old.YYMMDDHHMMSS`) comparando hash MD5 para evitar desgaste desnecessário da mídia Flash.
+4. Clona/atualiza o repositório Ansible para a mídia.
+5. Inspeciona `~/du/backups/` e copia com segurança os backups criptografados (`.tar.bz2.gpg`, `.sha256`, `.asc`) para `/mnt/ventoy/backup/` sem sobrescrever nada indevido.
+
+No ambiente Debian Live, basta disparar:
+```bash
+sudo mkdir -p /mnt/ventoy && sudo mount -L Ventoy /mnt/ventoy
+sudo /mnt/ventoy/scripts/apply-calamares.sh
 ```
 
 ---
