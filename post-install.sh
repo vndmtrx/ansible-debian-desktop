@@ -216,40 +216,80 @@ else
   log_ok "Nenhum swap ativo em disco físico."
 fi
 
-# 3.2 Fechar containers de swap mapeados pelo device mapper
+# 3.2 Fechar containers de swap mapeados pelo device mapper e limpar /etc/crypttab
+# Mapeamentos com palavra 'swap' no nome ou associados a partição de swap
 SWAP_MAPPERS=()
+SWAP_UUIDS=()
+
 if [ -f /etc/crypttab ]; then
-  while read -r name _; do
-    if [ -n "$name" ]; then
+  while read -r name src _; do
+    if [[ "$name" =~ swap ]] || [[ "$src" =~ swap ]]; then
       SWAP_MAPPERS+=("$name")
     fi
-  done < <(grep 'swap' /etc/crypttab || true)
+  done < <(grep -v '^#' /etc/crypttab || true)
 fi
 
-while read -r mname; do
-  if [ -n "$mname" ] && [[ ! " ${SWAP_MAPPERS[*]:-} " =~ " ${mname} " ]]; then
-    SWAP_MAPPERS+=("$mname")
+# Detectar partições swap físicas pelo lsblk para extrair mapper e UUID
+while read -r dev fstype uuid mapper_child; do
+  if [ "$fstype" = "swap" ]; then
+    # Se a própria partição é swap (não-criptografada ou mapper aberto)
+    if [[ "$dev" == /dev/mapper/* ]]; then
+      m="${dev##*/}"
+      SWAP_MAPPERS+=("$m")
+    fi
+  elif [ "$fstype" = "crypto_LUKS" ]; then
+    # Se o holder filho é swap
+    if lsblk -lnp -o FSTYPE "$dev" 2>/dev/null | grep -q "swap"; then
+      SWAP_UUIDS+=("$uuid")
+      mchild=$(lsblk -lnp -o NAME,TYPE "$dev" 2>/dev/null | grep 'crypt' | awk '{print $1}' | head -n 1 || true)
+      if [ -n "$mchild" ]; then
+        SWAP_MAPPERS+=("${mchild##*/}")
+      fi
+    fi
   fi
-done < <(lsblk -lnp -o NAME,TYPE,FSTYPE | grep -i 'swap' | grep 'crypt' | awk '{print $1}' | sed 's|/dev/mapper/||' || true)
+done < <(lsblk -lnp -o NAME,FSTYPE,UUID 2>/dev/null || true)
 
-for mapper in "${SWAP_MAPPERS[@]:-}"; do
-  if [ -b "/dev/mapper/$mapper" ]; then
+# Remover duplicatas de mappers
+UNIQUE_MAPPERS=($(echo "${SWAP_MAPPERS[@]:-}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+
+for mapper in "${UNIQUE_MAPPERS[@]:-}"; do
+  if [ -n "$mapper" ] && [ -b "/dev/mapper/$mapper" ]; then
     log_step "Fechando container LUKS da swap (/dev/mapper/$mapper)..."
-    cryptsetup close "$mapper"
+    cryptsetup close "$mapper" 2>/dev/null || dmsetup remove -f "$mapper" 2>/dev/null || true
     log_applied "Container /dev/mapper/$mapper fechado."
     record_action
   fi
 done
 
-# 3.3 Limpar /etc/crypttab
-if [ -f /etc/crypttab ] && grep -q 'swap' /etc/crypttab; then
-  log_step "Removendo entrada de swap do /etc/crypttab..."
-  sed -i '/swap/d' /etc/crypttab
-  log_applied "Entradas de swap removidas do /etc/crypttab."
-  INITRAMFS_CHANGED=true
-  record_action
-else
-  log_ok "/etc/crypttab já não possui entradas de swap."
+# 3.3 Limpar /etc/crypttab por nome do mapper, por UUID da partição e por palavra swap
+if [ -f /etc/crypttab ]; then
+  CRYPTTAB_CLEANED=false
+  for mapper in "${UNIQUE_MAPPERS[@]:-}"; do
+    if [ -n "$mapper" ] && grep -q "^${mapper}[[:space:]]" /etc/crypttab; then
+      log_step "Removendo entrada do mapper '$mapper' do /etc/crypttab..."
+      sed -i "/^${mapper}[[:space:]]/d" /etc/crypttab
+      CRYPTTAB_CLEANED=true
+    fi
+  done
+  for suuid in "${SWAP_UUIDS[@]:-}"; do
+    if [ -n "$suuid" ] && grep -q "$suuid" /etc/crypttab; then
+      log_step "Removendo entrada com UUID '$suuid' do /etc/crypttab..."
+      sed -i "/$suuid/d" /etc/crypttab
+      CRYPTTAB_CLEANED=true
+    fi
+  done
+  if grep -q 'swap' /etc/crypttab; then
+    log_step "Removendo linhas contendo 'swap' do /etc/crypttab..."
+    sed -i '/swap/d' /etc/crypttab
+    CRYPTTAB_CLEANED=true
+  fi
+  if [ "$CRYPTTAB_CLEANED" = true ]; then
+    log_applied "Entradas de swap removidas do /etc/crypttab."
+    INITRAMFS_CHANGED=true
+    record_action
+  else
+    log_ok "/etc/crypttab já não possui entradas de swap."
+  fi
 fi
 
 # 3.4 Limpar /etc/fstab
