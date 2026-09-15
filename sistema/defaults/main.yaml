@@ -13,6 +13,10 @@ atualiza_sistema: false
 # Usado em: sistema/tasks/00-base.yaml
 atualiza_firmware: false
 
+# E-mail de comentário para chave SSH pública id_ed25519
+# Usado em: sistema/tasks/02-usuario.yaml
+ssh_key_email: "vndmtrx@duck.com"
+
 # Pacotes essenciais do sistema operacional
 # Usado em: sistema/tasks/00-base.yaml
 pacotes_sistema:
@@ -26,6 +30,7 @@ pacotes_sistema:
   - libfuse2t64
   - gnome-keyring
   - libsecret-tools
+  - python3-debian
 
 # Utilitários de diagnóstico de hardware e inspeção do sistema
 # Usado em: sistema/tasks/00-base.yaml
@@ -60,6 +65,15 @@ servicos_sistema:
   - systemd-timesyncd.service
   - cron.service
   - fstrim.timer
+  - btrfs-scrub.timer
+
+# Serviços a serem mascarados ou desabilitados para acelerar o boot e evitar esperas
+# Usado em: sistema/tasks/00-base.yaml
+servicos_mascarados:
+  - plymouth-quit-wait.service
+
+servicos_desabilitados:
+  - NetworkManager-wait-online.service
 
 # Aplicações de terminal (CLI moderna)
 # Usado em: sistema/tasks/00-base.yaml
@@ -138,6 +152,7 @@ aliases_bash:
   - 'plantuml="docker run -it --rm -p 8080:8080 plantuml/plantuml-server:jetty"'
   - 'salvar-extensoes="$HOME/.local/bin/salvar-extensoes"'
   - 'backup-seguranca="$HOME/.local/bin/backup-seguranca"'
+  - 'restore-seguranca="$HOME/.local/bin/restore-seguranca"'
 
 # Configurações do ASDF Core
 # Usado em: sistema/tasks/03-asdf.yaml
