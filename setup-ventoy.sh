@@ -12,7 +12,7 @@ if ! mountpoint -q /mnt/ventoy; then
 fi
 
 echo "==> Criando árvore de diretórios..."
-sudo mkdir -p /mnt/ventoy/scripts/calamares/modules /mnt/ventoy/backup
+sudo mkdir -p /mnt/ventoy/scripts /mnt/ventoy/backup
 
 # -------------------------------------------------------------------------
 # Função auxiliar para criação declarativa e versionamento seguro de arquivos
@@ -53,151 +53,64 @@ write_declarative_file() {
 }
 
 # -------------------------------------------------------------------------
-# Script auxiliar executado dentro do Debian Live
+# Script auxiliar executado dentro do Debian Live (Injetor Cirúrgico)
 # -------------------------------------------------------------------------
-echo "==> Gerando scripts e configurações do Calamares..."
+echo "==> Gerando injetor apply-calamares.sh..."
 
 write_declarative_file /mnt/ventoy/scripts/apply-calamares.sh << 'EOF'
 #!/usr/bin/env bash
 # ==============================================================================
-# apply-calamares.sh: Injeta configurações customizadas no ambiente Debian Live
+# apply-calamares.sh: Injeta otimizações no Calamares nativo do Debian Live
+# Preserva a integridade do settings.conf original e customiza via sed/conf
 # ==============================================================================
 set -euo pipefail
 
-VENTOY_DEV=$(blkid -L Ventoy 2>/dev/null || echo "/dev/disk/by-label/Ventoy")
+# -------------------------------------------------------------------------
+# Montagem resiliente da partição do Ventoy no Debian Live
+# Lida com o lock exclusivo do device-mapper criando loop device ro se necessário
+# -------------------------------------------------------------------------
 sudo mkdir -p /mnt/ventoy
 if ! mountpoint -q /mnt/ventoy; then
-  sudo mount "$VENTOY_DEV" /mnt/ventoy 2>/dev/null || true
+  VENTOY_DEV=$(blkid -L Ventoy 2>/dev/null || lsblk -lpo NAME,LABEL 2>/dev/null | grep -i "Ventoy" | awk '{print $1}' | head -n 1 || true)
+
+  if [ -z "$VENTOY_DEV" ]; then
+    VENTOY_DEV="/dev/sda1"
+  fi
+
+  echo "==> Tentando montar mídia Ventoy ($VENTOY_DEV)..."
+  if ! sudo mount -t exfat -o ro "$VENTOY_DEV" /mnt/ventoy 2>/dev/null && ! sudo mount -o ro "$VENTOY_DEV" /mnt/ventoy 2>/dev/null; then
+    echo "==> Device bloqueado pelo dm-mapper do Ventoy. Criando loop device desacoplado em modo read-only..."
+    LOOP_DEV=$(sudo losetup -r -f --show "$VENTOY_DEV" 2>/dev/null || true)
+    if [ -n "$LOOP_DEV" ]; then
+      echo "    Loop device criado: $LOOP_DEV"
+      sudo mount -o ro "$LOOP_DEV" /mnt/ventoy 2>/dev/null || true
+    fi
+  fi
 fi
 
-echo "==> Injetando configurações customizadas no Debian Live..."
-sudo cp -r /mnt/ventoy/scripts/calamares/modules/* /etc/calamares/modules/
-sudo cp /mnt/ventoy/scripts/calamares/settings.conf /etc/calamares/settings.conf
+if ! mountpoint -q /mnt/ventoy; then
+  echo "ERRO: Não foi possível montar a partição do Ventoy em /mnt/ventoy."
+  exit 1
+fi
 
-echo "==> Iniciando Calamares em modo verbose..."
-sudo calamares -d
-EOF
-sudo chmod +x /mnt/ventoy/scripts/apply-calamares.sh
+echo "==> Partição Ventoy montada com sucesso em /mnt/ventoy."
+echo "==> Injetando configurações de baixo nível no Calamares do Debian Live..."
 
-# -------------------------------------------------------------------------
-# Calamares: settings.conf
-# -------------------------------------------------------------------------
-write_declarative_file /mnt/ventoy/scripts/calamares/settings.conf << 'EOF'
----
-modules-search: [ local, /usr/lib/x86_64-linux-gnu/calamares/modules ]
-
-instances:
-  - id:       ansible_copy
-    module:   shellprocess
-    config:   shellprocess-ansible-copy.conf
-  - id:       ansible
-    module:   shellprocess
-    config:   shellprocess-ansible.conf
-
-sequence:
-  - show:
-      - welcome
-      - locale
-      - keyboard
-      - partition
-      - users
-      - summary
-  - exec:
-      - partition
-      - mount
-      - unpackfs
-      - machineid
-      - fstab
-      - locale
-      - keyboard
-      - localecfg
-      - users
-      - networkcfg
-      - hwclock
-      - shellprocess@ansible_copy
-      - shellprocess@ansible
-      - initramfs
-      - grubcfg
-      - bootloader
-      - umount
-  - show:
-      - finished
-
-branding: debian
-prompt-install: false
-dont-chroot: false
-oem-setup: false
-disable-cancel: false
-EOF
-
-# -------------------------------------------------------------------------
-# Calamares: locale.conf
-# -------------------------------------------------------------------------
-write_declarative_file /mnt/ventoy/scripts/calamares/modules/locale.conf << 'EOF'
----
-region: "America"
-zone: "Sao_Paulo"
-locale: "pt_BR.UTF-8"
-EOF
-
-# -------------------------------------------------------------------------
-# Calamares: keyboard.conf
-# -------------------------------------------------------------------------
-write_declarative_file /mnt/ventoy/scripts/calamares/modules/keyboard.conf << 'EOF'
----
-selectedModel: pc105
-selectedLayout: br
-selectedVariant: abnt2
-EOF
-
-# -------------------------------------------------------------------------
-# Calamares: users.conf
-# -------------------------------------------------------------------------
-write_declarative_file /mnt/ventoy/scripts/calamares/modules/users.conf << 'EOF'
----
-defaultGroups:
-  - sudo
-  - users
-  - audio
-  - video
-  - dialout
-  - plugdev
-  - netdev
-  - kvm
-
-autologinGroup: autologin
-doAutologin: false
-sudoersGroup: sudo
-setRootPassword: false
-doReusePassword: true
-
-defaultUsername: eu
-defaultHostname: fantasma
-EOF
-
-# -------------------------------------------------------------------------
-# Calamares: partition.conf
-# -------------------------------------------------------------------------
-write_declarative_file /mnt/ventoy/scripts/calamares/modules/partition.conf << 'EOF'
+# 1. Configurar partition.conf (Btrfs padrão + LUKS2 PBKDF2 500ms)
+sudo tee /etc/calamares/modules/partition.conf > /dev/null << 'PART_CONF'
 ---
 userSwapChoices:
   - none
-
 initialSwapChoice: none
-
 defaultFileSystemType: "btrfs"
-
 luksGeneration: luks2
-
 luksKeyslotPBKDF:
   type: pbkdf2
   time: 500
-EOF
+PART_CONF
 
-# -------------------------------------------------------------------------
-# Calamares: fstab.conf
-# -------------------------------------------------------------------------
-write_declarative_file /mnt/ventoy/scripts/calamares/modules/fstab.conf << 'EOF'
+# 2. Configurar fstab.conf com subvolumes Btrfs e compressão zstd
+sudo tee /etc/calamares/modules/fstab.conf > /dev/null << 'FSTAB_CONF'
 ---
 mountOptions:
   default: defaults,noatime
@@ -212,40 +125,10 @@ btrfsSubvolumes:
     subvolume: /@log
   - mountPoint: /.snapshots
     subvolume: /@snapshots
-EOF
+FSTAB_CONF
 
-# -------------------------------------------------------------------------
-# Calamares: shellprocess-ansible-copy.conf (Executa FORA do chroot)
-# -------------------------------------------------------------------------
-write_declarative_file /mnt/ventoy/scripts/calamares/modules/shellprocess-ansible-copy.conf << 'EOF'
----
-dontChroot: true
-timeout: 120
-script:
-  - name: "Copiar ansible-debian-desktop da mídia Ventoy para o sistema instalado"
-    command: |
-      # Identifica dinamicamente o usuário alvo na pasta /home do sistema instalado
-      TARGET_USER=$(find @@ROOT@@/home -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | grep -v 'lost+found' | head -n 1 || true)
-      if [ -z "$TARGET_USER" ]; then
-        TARGET_USER="eu"
-      fi
-
-      DEST_DIR="@@ROOT@@/home/$TARGET_USER/du/dev/github"
-      mkdir -p "$DEST_DIR"
-
-      if [ -d /mnt/ventoy/scripts/ansible-debian-desktop ]; then
-        cp -r /mnt/ventoy/scripts/ansible-debian-desktop "$DEST_DIR/"
-        chmod +x "$DEST_DIR/ansible-debian-desktop/"*.sh 2>/dev/null || true
-        # Garante a propriedade dos arquivos para o primeiro UID (1000)
-        chown -R 1000:1000 "@@ROOT@@/home/$TARGET_USER/du" 2>/dev/null || true
-      fi
-EOF
-
-# -------------------------------------------------------------------------
-# Calamares: shellprocess-ansible.conf (Hooks de Baixo Nível no chroot)
-# Configurações essenciais para antes da geração de initramfs e bootloader
-# -------------------------------------------------------------------------
-write_declarative_file /mnt/ventoy/scripts/calamares/modules/shellprocess-ansible.conf << 'EOF'
+# 3. Configurar módulo nativo shellprocess com os hooks de baixo nível
+sudo tee /etc/calamares/modules/shellprocess.conf > /dev/null << 'SHELL_CONF'
 ---
 dontChroot: false
 timeout: 300
@@ -265,7 +148,7 @@ script:
   - name: "Desativar resume no initramfs"
     command: "echo 'RESUME=none' > /etc/initramfs-tools/conf.d/resume"
 
-  # 4. Otimizações de sysctl (swappiness para zswap e flushing contínuo) e scheduler NVMe
+  # 4. Otimizações de sysctl e scheduler NVMe
   - name: "Aplicar regras de sysctl e scheduler none para NVMe"
     command: |
       cat << 'SYSCTL' > /etc/sysctl.d/99-nvme-performance.conf
@@ -282,7 +165,37 @@ script:
   # 5. Instalar dependências mínimas para o bootstrap pós-instalação
   - name: "Garantir dependências mínimas de bootstrap"
     command: "apt-get update && apt-get install -y pipx git curl sudo"
+SHELL_CONF
+
+# 4. Injetar o job nativo shellprocess no settings.conf original (antes de initramfs/umount)
+if ! grep -q "shellprocess" /etc/calamares/settings.conf; then
+  sudo sed -i '/- initramfscfg/i \  - shellprocess' /etc/calamares/settings.conf
+fi
+
+echo "==> Iniciando Calamares em modo verbose..."
+sudo calamares -d
+
+# 5. Hook pós-instalação: Copiar repositório e backups se a partição target estiver montada
+TARGET_ROOT=$(findmnt -no TARGET /dev/mapper/luks-* 2>/dev/null | grep -E '^/tmp/' | head -n 1 || true)
+if [ -z "$TARGET_ROOT" ]; then
+  TARGET_ROOT=$(findmnt -no TARGET -T /target 2>/dev/null || true)
+fi
+
+if [ -n "$TARGET_ROOT" ] && [ -d "$TARGET_ROOT/home" ]; then
+  TARGET_USER=$(find "$TARGET_ROOT/home" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | grep -v 'lost+found' | head -n 1 || true)
+  if [ -n "$TARGET_USER" ]; then
+    echo "==> Copiando repositório Ansible para o usuário $TARGET_USER no sistema instalado..."
+    USER_DEST="$TARGET_ROOT/home/$TARGET_USER/du/dev/github"
+    mkdir -p "$USER_DEST"
+    if [ -d /mnt/ventoy/scripts/ansible-debian-desktop ]; then
+      cp -r /mnt/ventoy/scripts/ansible-debian-desktop "$USER_DEST/"
+      chmod +x "$USER_DEST/ansible-debian-desktop/"*.sh 2>/dev/null || true
+      chown -R 1000:1000 "$TARGET_ROOT/home/$TARGET_USER/du" 2>/dev/null || true
+    fi
+  fi
+fi
 EOF
+sudo chmod +x /mnt/ventoy/scripts/apply-calamares.sh
 
 # -------------------------------------------------------------------------
 # Sincronização do repositório no pendrive (sem reter diretório aberto)
