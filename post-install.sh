@@ -7,125 +7,207 @@
 # ==============================================================================
 set -euo pipefail
 
+# Cores e formatação
+BOLD='\033[1m'
+RESET='\033[0m'
+GREEN='\033[32m'
+YELLOW='\033[33m'
+BLUE='\033[34m'
+CYAN='\033[36m'
+RED='\033[31m'
+DIM='\033[2m'
+
+log_info()    { echo -e "${BLUE}==>${RESET} ${BOLD}$1${RESET}"; }
+log_step()    { echo -e "  ${CYAN}[*]${RESET} $1"; }
+log_applied() { echo -e "  ${GREEN}[+] APLICADO:${RESET} $1"; }
+log_ok()      { echo -e "  ${DIM}[=] JÁ CONFIGURADO:${RESET} $1"; }
+log_warn()    { echo -e "  ${YELLOW}[!] AVISO:${RESET} $1"; }
+log_err()     { echo -e "  ${RED}[x] ERRO:${RESET} $1" >&2; }
+
 # Garantir execução como root
 if [ "$(id -u)" -ne 0 ]; then
-  echo "❌ Este script deve ser executado como root (use sudo ./post-install.sh)" >&2
+  log_err "Este script deve ser executado como root (use: sudo ./post-install.sh)"
   exit 1
 fi
 
-echo "==> [Post-Install] Iniciando otimizações de sistema..."
+echo -e "${BOLD}${BLUE}====================================================${RESET}"
+echo -e "${BOLD}${BLUE}   ⚡ Otimizador Pós-Instalação Debian 13 (Day-0)${RESET}"
+echo -e "${BOLD}${BLUE}====================================================${RESET}"
+echo ""
 
 GRUB_CONFIG="/etc/default/grub"
 GRUB_CHANGED=false
 INITRAMFS_CHANGED=false
+ACTIONS_COUNT=0
+
+record_action() {
+  ACTIONS_COUNT=$((ACTIONS_COUNT + 1))
+}
 
 # -------------------------------------------------------------------------
 # 1. Habilitar suporte a cryptodisk e pré-carregar módulos no GRUB
 # -------------------------------------------------------------------------
+log_info "1/9 Verificando configurações do GRUB (/etc/default/grub)..."
+
 if [ -f "$GRUB_CONFIG" ]; then
-  if grep -q "^GRUB_ENABLE_CRYPTODISK=" "$GRUB_CONFIG"; then
-    if ! grep -q "^GRUB_ENABLE_CRYPTODISK=y" "$GRUB_CONFIG"; then
-      sed -i 's/^GRUB_ENABLE_CRYPTODISK=.*/GRUB_ENABLE_CRYPTODISK=y/' "$GRUB_CONFIG"
-      GRUB_CHANGED=true
-    fi
+  # 1.1 GRUB_ENABLE_CRYPTODISK
+  if grep -q "^GRUB_ENABLE_CRYPTODISK=y" "$GRUB_CONFIG"; then
+    log_ok "GRUB_ENABLE_CRYPTODISK já está ativo (y)."
   else
-    echo "GRUB_ENABLE_CRYPTODISK=y" >> "$GRUB_CONFIG"
+    log_step "Ativando GRUB_ENABLE_CRYPTODISK=y..."
+    if grep -q "^GRUB_ENABLE_CRYPTODISK=" "$GRUB_CONFIG"; then
+      sed -i 's/^GRUB_ENABLE_CRYPTODISK=.*/GRUB_ENABLE_CRYPTODISK=y/' "$GRUB_CONFIG"
+    else
+      echo "GRUB_ENABLE_CRYPTODISK=y" >> "$GRUB_CONFIG"
+    fi
+    log_applied "GRUB_ENABLE_CRYPTODISK=y configurado."
     GRUB_CHANGED=true
+    record_action
   fi
 
-  # Pré-carregar módulos LUKS na imagem EFI do GRUB
+  # 1.2 GRUB_PRELOAD_MODULES
   PRELOAD_TARGET='GRUB_PRELOAD_MODULES="luks crypto gcry_rijndael gcry_sha256 btrfs"'
   if grep -q "^GRUB_PRELOAD_MODULES=" "$GRUB_CONFIG"; then
     CURRENT_PRELOAD=$(grep "^GRUB_PRELOAD_MODULES=" "$GRUB_CONFIG")
-    if [ "$CURRENT_PRELOAD" != "$PRELOAD_TARGET" ]; then
+    if [ "$CURRENT_PRELOAD" = "$PRELOAD_TARGET" ]; then
+      log_ok "Módulos de criptografia e filesystem já pré-carregados no GRUB."
+    else
+      log_step "Atualizando módulos em GRUB_PRELOAD_MODULES..."
       sed -i "s|^GRUB_PRELOAD_MODULES=.*|$PRELOAD_TARGET|" "$GRUB_CONFIG"
+      log_applied "GRUB_PRELOAD_MODULES atualizado."
       GRUB_CHANGED=true
+      record_action
     fi
   else
+    log_step "Inserindo GRUB_PRELOAD_MODULES..."
     echo "$PRELOAD_TARGET" >> "$GRUB_CONFIG"
+    log_applied "GRUB_PRELOAD_MODULES inserido."
     GRUB_CHANGED=true
+    record_action
   fi
 
-  # Remover parâmetros de zswap residuais (se existirem)
+  # 1.3 Limpar zswap residual (se existir)
   if grep -q "zswap\.enabled" "$GRUB_CONFIG"; then
-    echo "==> Removendo parâmetros de zswap do GRUB..."
+    log_step "Removendo parâmetros residuais de zswap da linha do kernel..."
     sed -i -E 's/zswap\.[^ "]+//g; s/  */ /g' "$GRUB_CONFIG"
+    log_applied "Parâmetros de zswap removidos do GRUB."
     GRUB_CHANGED=true
+    record_action
+  else
+    log_ok "Nenhum parâmetro residual de zswap no GRUB."
   fi
 
-  # Remover splash e ajustar timeout
+  # 1.4 Remover splash
   if grep -q "splash" "$GRUB_CONFIG"; then
-    echo "==> Removendo splash do GRUB..."
+    log_step "Removendo splash da linha do kernel para boot limpo e rápido..."
     sed -i 's/\bsplash\b//g; s/  */ /g' "$GRUB_CONFIG"
+    log_applied "Splash removido do GRUB."
     GRUB_CHANGED=true
+    record_action
+  else
+    log_ok "Splash já ausente no GRUB."
   fi
 
-  if ! grep -q '^GRUB_TIMEOUT=1' "$GRUB_CONFIG"; then
-    echo "==> Ajustando timeout do GRUB para 1s..."
+  # 1.5 GRUB_TIMEOUT=1
+  if grep -q '^GRUB_TIMEOUT=1' "$GRUB_CONFIG"; then
+    log_ok "Timeout do GRUB já configurado para 1s."
+  else
+    log_step "Ajustando timeout do GRUB para 1s..."
     if grep -q "^GRUB_TIMEOUT=" "$GRUB_CONFIG"; then
       sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=1/' "$GRUB_CONFIG"
     else
       echo "GRUB_TIMEOUT=1" >> "$GRUB_CONFIG"
     fi
+    log_applied "GRUB_TIMEOUT=1 configurado."
     GRUB_CHANGED=true
+    record_action
   fi
+else
+  log_warn "Arquivo $GRUB_CONFIG não encontrado. Etapa do GRUB ignorada."
 fi
 
 # -------------------------------------------------------------------------
 # 2. Desativar swap em disco e limpar referências (/etc/fstab, crypttab, resume)
 # -------------------------------------------------------------------------
-# Descobrir dispositivos ou partições de swap físicos (excluindo zram)
+log_info "2/9 Verificando swap em disco e configurações de hibernação..."
+
+# 2.1 Desativar swap ativo em disco
 SWAP_DEVS=$(swapon --show=NAME --noheadings 2>/dev/null | grep -v 'zram' || true)
 if [ -n "$SWAP_DEVS" ]; then
-  echo "==> Desativando swap ativo em disco..."
   for dev in $SWAP_DEVS; do
+    log_step "Desativando swap ativo em disco: $dev..."
     swapoff "$dev"
+    log_applied "Swap em $dev desativado."
+    record_action
   done
+else
+  log_ok "Nenhum swap ativo em disco físico."
 fi
 
+# 2.2 Limpar /etc/crypttab
 SWAP_MAPPER=""
 if [ -f /etc/crypttab ] && grep -q 'swap' /etc/crypttab; then
   SWAP_MAPPER=$(grep 'swap' /etc/crypttab | awk '{print $1}' || true)
-  echo "==> Removendo referências de swap do /etc/crypttab..."
+  log_step "Removendo entrada de swap do /etc/crypttab ($SWAP_MAPPER)..."
   sed -i '/swap/d' /etc/crypttab
+  log_applied "Entrada de swap removida do /etc/crypttab."
   INITRAMFS_CHANGED=true
+  record_action
+else
+  log_ok "/etc/crypttab já não possui entradas de swap."
 fi
 
+# 2.3 Limpar /etc/fstab
 if grep -q '[[:space:]]swap[[:space:]]' /etc/fstab 2>/dev/null; then
-  echo "==> Removendo referências de swap do /etc/fstab..."
+  log_step "Removendo entrada de swap do /etc/fstab..."
   sed -i '/[[:space:]]swap[[:space:]]/d' /etc/fstab
+  log_applied "Entrada de swap removida do /etc/fstab."
+  record_action
+else
+  log_ok "/etc/fstab já não possui entradas de swap."
 fi
 
+# 2.4 Remover resume= do GRUB
 if [ -f "$GRUB_CONFIG" ] && grep -q 'resume=' "$GRUB_CONFIG"; then
-  echo "==> Removendo parâmetro resume= do GRUB..."
+  log_step "Removendo parâmetro de resume de hibernação do GRUB..."
   sed -i -E 's/resume=[^ "]+//g; s/  */ /g' "$GRUB_CONFIG"
+  log_applied "Parâmetro resume= removido do GRUB."
   GRUB_CHANGED=true
+  record_action
+else
+  log_ok "GRUB já não possui parâmetro resume=."
 fi
 
-# Desativar resume de hibernação no initramfs (evita erro de cryptroot na compilação)
+# 2.5 Configurar RESUME=none no initramfs
 RESUME_CONF="/etc/initramfs-tools/conf.d/resume"
 mkdir -p "$(dirname "$RESUME_CONF")"
 if [ ! -f "$RESUME_CONF" ] || [ "$(cat "$RESUME_CONF" 2>/dev/null)" != "RESUME=none" ]; then
-  echo "==> Configurando RESUME=none em $RESUME_CONF..."
+  log_step "Configurando RESUME=none em $RESUME_CONF..."
   echo "RESUME=none" > "$RESUME_CONF"
+  log_applied "RESUME=none configurado (previne falhas do cryptroot no initramfs)."
   INITRAMFS_CHANGED=true
+  record_action
+else
+  log_ok "Initramfs já configurado com RESUME=none."
 fi
 
-# Fechar mapper de swap se aberto
+# 2.6 Fechar container LUKS da swap se aberto
 if [ -n "$SWAP_MAPPER" ] && [ -b "/dev/mapper/$SWAP_MAPPER" ]; then
-  echo "==> Fechando container LUKS da swap (/dev/mapper/$SWAP_MAPPER)..."
+  log_step "Fechando container LUKS da swap (/dev/mapper/$SWAP_MAPPER)..."
   cryptsetup close "$SWAP_MAPPER"
+  log_applied "Container /dev/mapper/$SWAP_MAPPER fechado."
+  record_action
 fi
 
 # -------------------------------------------------------------------------
 # 3. Redimensionar partição raiz (reivindicar espaço da partição de swap a quente)
 # -------------------------------------------------------------------------
-# Detectar disco onde a raiz reside
+log_info "3/9 Verificando topologia de disco e redimensionamento online..."
+
 ROOT_SOURCE=$(findmnt -no SOURCE /)
 ROOT_PARENT_DEV=""
 
 if [ -n "$ROOT_SOURCE" ]; then
-  # Identifica a partição física subjacente (ex: /dev/nvme0n1p2 ou /dev/sda2)
   ROOT_PARENT_DEV=$(lsblk -lnps -o NAME,TYPE "$ROOT_SOURCE" | grep 'part' | head -n 1 | awk '{print $1}' || true)
 fi
 
@@ -133,78 +215,94 @@ if [ -n "$ROOT_PARENT_DEV" ]; then
   DISK_DEV=$(lsblk -lnps -o NAME,TYPE "$ROOT_PARENT_DEV" | grep 'disk' | head -n 1 | awk '{print $1}' || true)
 
   if [ -n "$DISK_DEV" ]; then
-    # Listar partições no disco ordenadas por número
     PART_LIST=$(lsblk -lnp -o NAME,TYPE "$DISK_DEV" | grep 'part' | awk '{print $1}')
     PART_COUNT=$(echo "$PART_LIST" | wc -l)
     LAST_PART=$(echo "$PART_LIST" | tail -n 1)
 
-    # Obter número da partição raiz e da última partição
     ROOT_PART_NUM=$(echo "$ROOT_PARENT_DEV" | grep -oP '[0-9]+$')
     LAST_PART_NUM=$(echo "$LAST_PART" | grep -oP '[0-9]+$')
 
-    # Se existem 3+ partições e a raiz não é a última partição, a última é a partição de swap morta
     if [ "$PART_COUNT" -ge 3 ] && [ "$ROOT_PART_NUM" -lt "$LAST_PART_NUM" ]; then
-      echo "==> Detectada partição morta $LAST_PART (p$LAST_PART_NUM). Redimensionando disco..."
+      log_step "Detectada partição residual pós-raiz: $LAST_PART (p$LAST_PART_NUM) no disco $DISK_DEV."
 
       if ! command -v parted >/dev/null 2>&1; then
-        echo "==> Instalando parted..."
+        log_step "Instalando pacote parted..."
         apt-get update -qq
         apt-get install -y -qq parted
       fi
 
-      echo "==> Removendo partição $LAST_PART_NUM ($LAST_PART)..."
+      log_step "Deletando partição residual $LAST_PART_NUM ($LAST_PART)..."
       parted -s "$DISK_DEV" rm "$LAST_PART_NUM"
+      log_applied "Partição $LAST_PART_NUM removida da tabela GPT."
 
-      echo "==> Expandindo partição raiz $ROOT_PART_NUM para 100% do disco..."
+      log_step "Expandindo partição física $ROOT_PART_NUM para 100% do disco..."
       parted -s "$DISK_DEV" resizepart "$ROOT_PART_NUM" 100%
+      log_applied "Partição física $ROOT_PARENT_DEV expandida para 100%."
 
-      # Redimensionar container LUKS a quente
+      # Redimensionar LUKS a quente
       if [[ "$ROOT_SOURCE" == /dev/mapper/* ]]; then
         MAPPER_NAME="${ROOT_SOURCE##*/}"
-        echo "==> Redimensionando container LUKS ($MAPPER_NAME) a quente..."
+        log_step "Expandindo container LUKS ($MAPPER_NAME) a quente..."
         cryptsetup resize "$MAPPER_NAME"
+        log_applied "Container LUKS $MAPPER_NAME redimensionado."
       fi
 
-      # Redimensionar sistema de arquivos online
+      # Redimensionar filesystem a quente
       ROOT_FSTYPE=$(findmnt -no FSTYPE /)
-      echo "==> Expandindo sistema de arquivos ($ROOT_FSTYPE) a quente..."
+      log_step "Expandindo filesystem online ($ROOT_FSTYPE) em $ROOT_SOURCE..."
       case "$ROOT_FSTYPE" in
         ext4)
           resize2fs "$ROOT_SOURCE"
+          log_applied "Filesystem ext4 expandido com sucesso a quente."
           ;;
         btrfs)
           btrfs filesystem resize max /
+          log_applied "Filesystem btrfs expandido com sucesso a quente."
           ;;
         *)
-          echo "⚠️  Filesystem '$ROOT_FSTYPE' não suportado para expansão automática."
+          log_warn "Filesystem '$ROOT_FSTYPE' não suportado para expansão automática."
           ;;
       esac
 
-      echo "==> Executando TRIM em blocos liberados..."
+      log_step "Executando TRIM geral nos blocos recém-liberados..."
       fstrim -av
+      log_applied "TRIM executado com sucesso."
+      record_action
     else
-      echo "==> Partição raiz já ocupa o espaço contíguo do disco (nenhuma partição residual)."
+      log_ok "Partição raiz ($ROOT_PARENT_DEV) já ocupa o espaço final do disco ($DISK_DEV). Nenhum resize necessário."
     fi
+  else
+    log_warn "Não foi possível determinar o disco físico subjacente à partição raiz."
   fi
+else
+  log_warn "Não foi possível determinar a partição física do ponto de montagem /."
 fi
 
 # -------------------------------------------------------------------------
 # 4. Otimizar /etc/crypttab com flags NVMe síncronas e TRIM
 # -------------------------------------------------------------------------
+log_info "4/9 Verificando flags de desempenho NVMe no /etc/crypttab..."
+
 CRYPTTAB="/etc/crypttab"
 if [ -f "$CRYPTTAB" ] && [ -s "$CRYPTTAB" ]; then
   if ! grep -q "no-read-workqueue" "$CRYPTTAB"; then
-    echo "==> Otimizando /etc/crypttab com flags NVMe síncronas..."
+    log_step "Aplicando flags 'discard,no-read-workqueue,no-write-workqueue' no $CRYPTTAB..."
     sed -i -E 's/(luks,initramfs|luks)/\1,discard,no-read-workqueue,no-write-workqueue/' "$CRYPTTAB"
+    log_applied "/etc/crypttab otimizado para despacho direto no NVMe."
     INITRAMFS_CHANGED=true
+    record_action
   else
-    echo "==> /etc/crypttab já possui flags NVMe otimizadas."
+    log_ok "/etc/crypttab já possui flags NVMe síncronas configuradas."
   fi
+else
+  log_ok "/etc/crypttab vazio ou inexistente (criptografia não ativa via crypttab)."
 fi
 
 # -------------------------------------------------------------------------
 # 5. Configurar sysctl para SSDs e memória
 # -------------------------------------------------------------------------
+log_info "5/9 Verificando parâmetros de sysctl (/etc/sysctl.d/99-nvme-performance.conf)..."
+
 SYSCTL_CONF="/etc/sysctl.d/99-nvme-performance.conf"
 SYSCTL_CONTENT=$(cat << 'EOF'
 vm.swappiness = 100
@@ -214,60 +312,112 @@ vm.vfs_cache_pressure = 50
 EOF
 )
 if [ ! -f "$SYSCTL_CONF" ] || [ "$(cat "$SYSCTL_CONF" 2>/dev/null)" != "$SYSCTL_CONTENT" ]; then
-  echo "==> Aplicando parâmetros de sysctl..."
+  log_step "Gravando parâmetros de sysctl em $SYSCTL_CONF..."
   mkdir -p "$(dirname "$SYSCTL_CONF")"
   echo "$SYSCTL_CONTENT" > "$SYSCTL_CONF"
   sysctl --system > /dev/null
+  log_applied "Parâmetros de sysctl aplicados no kernel."
+  record_action
+else
+  log_ok "Parâmetros de sysctl já sincronizados."
 fi
 
 # -------------------------------------------------------------------------
 # 6. Configurar regra UDEV para scheduler 'none' em NVMe
 # -------------------------------------------------------------------------
+log_info "6/9 Verificando regra UDEV de scheduler NVMe (/etc/udev/rules.d/60-nvme-scheduler.rules)..."
+
 UDEV_RULE="/etc/udev/rules.d/60-nvme-scheduler.rules"
 UDEV_CONTENT='ACTION=="add|change", KERNEL=="nvme[0-9]*n[0-9]*", ATTR{queue/scheduler}="none"'
 if [ ! -f "$UDEV_RULE" ] || [ "$(cat "$UDEV_RULE" 2>/dev/null)" != "$UDEV_CONTENT" ]; then
-  echo "==> Configurando scheduler 'none' para NVMe em udev..."
+  log_step "Configurando scheduler 'none' para filas NVMe em $UDEV_RULE..."
   mkdir -p "$(dirname "$UDEV_RULE")"
   echo "$UDEV_CONTENT" > "$UDEV_RULE"
   udevadm control --reload-rules
   udevadm trigger --subsystem-match=block
+  log_applied "Regra UDEV criada e recarregada."
+  record_action
+else
+  log_ok "Regra UDEV de scheduler NVMe já configurada."
 fi
 
 # -------------------------------------------------------------------------
 # 7. Atualizar initramfs e GRUB se houver alterações
 # -------------------------------------------------------------------------
+log_info "7/9 Verificando necessidade de compilação de initramfs e GRUB..."
+
 if [ "$INITRAMFS_CHANGED" = true ]; then
-  echo "==> Atualizando initramfs..."
+  log_step "Regerando imagens do initramfs (update-initramfs -u -k all)..."
   update-initramfs -u -k all
+  log_applied "Initramfs regerado com sucesso."
+  record_action
+else
+  log_ok "Nenhuma alteração de subsistema de boot pendente para o initramfs."
 fi
+
 if [ "$GRUB_CHANGED" = true ]; then
-  echo "==> Atualizando GRUB..."
+  log_step "Regerando menu de boot do GRUB (update-grub)..."
   update-grub
+  log_applied "GRUB atualizado com sucesso."
+  record_action
+else
+  log_ok "Nenhuma alteração pendente no GRUB."
 fi
 
 # -------------------------------------------------------------------------
 # 8. Instalar e ativar zram (swap comprimido em RAM)
 # -------------------------------------------------------------------------
+log_info "8/9 Verificando serviço de swap em RAM (zram-tools)..."
+
 if ! dpkg -l zram-tools 2>/dev/null | grep -q '^ii'; then
-  echo "==> Instalando zram-tools para swap comprimido em RAM..."
+  log_step "Instalando zram-tools para paginação comprimida em RAM..."
   apt-get update -qq
   apt-get install -y zram-tools
   systemctl restart zramswap.service || true
+  log_applied "zram-tools instalado e ativado."
+  record_action
 else
-  echo "==> zram-tools já instalado."
+  log_ok "Pacote zram-tools já instalado e ativo."
 fi
 
 # -------------------------------------------------------------------------
 # 9. Dependências essenciais de bootstrap
 # -------------------------------------------------------------------------
-echo "==> Verificando dependências essenciais (pipx, git, curl, sudo)..."
-if ! command -v pipx >/dev/null 2>&1 || ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
+log_info "9/9 Verificando ferramentas essenciais (pipx, git, curl, sudo)..."
+
+MISSING_PKGS=()
+for pkg in pipx git curl sudo; do
+  if ! command -v "$pkg" >/dev/null 2>&1; then
+    MISSING_PKGS+=("$pkg")
+  fi
+done
+
+if [ ${#MISSING_PKGS[@]} -gt 0 ]; then
+  log_step "Instalando ferramentas ausentes: ${MISSING_PKGS[*]}..."
   apt-get update -qq
-  apt-get install -y pipx git curl sudo
+  apt-get install -y "${MISSING_PKGS[@]}"
+  log_applied "Ferramentas essenciais instaladas: ${MISSING_PKGS[*]}."
+  record_action
+else
+  log_ok "Todas as ferramentas essenciais já estão instaladas."
 fi
 
+# -------------------------------------------------------------------------
+# Relatório Final
+# -------------------------------------------------------------------------
 echo ""
-echo "✅ [Post-Install] Otimizações aplicadas com sucesso!"
-echo "   - Swap em disco eliminado e espaço absorvido pela raiz."
-echo "   - zram ativo para paginação em RAM."
-echo "   - GRUB e crypttab calibrados para NVMe + LUKS."
+echo -e "${BOLD}${BLUE}====================================================${RESET}"
+echo -e "${BOLD}${BLUE}   📊 Relatório de Execução do Post-Install${RESET}"
+echo -e "${BOLD}${BLUE}====================================================${RESET}"
+
+if [ "$ACTIONS_COUNT" -gt 0 ]; then
+  echo -e "${GREEN}${BOLD}✔ Total de ações aplicadas:${RESET} $ACTIONS_COUNT"
+  echo -e "${CYAN}O sistema foi calibrado com sucesso.${RESET}"
+  echo "Próximos passos sugeridos:"
+  echo "  1. (Opcional) Restaurar backups com: ./restore.sh"
+  echo "  2. Disparar o Ansible com: ./bootstrap.sh"
+else
+  echo -e "${GREEN}${BOLD}✔ Nenhuma alteração foi necessária!${RESET}"
+  echo -e "${DIM}Todas as otimizações já estavam previamente aplicadas e ativas (idempotência 100%).${RESET}"
+fi
+echo ""
