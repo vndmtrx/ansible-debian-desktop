@@ -108,12 +108,17 @@ luksKeyslotPBKDF:
   time: 500
 PART_CONF
 
-# 2. Configurar fstab.conf com subvolumes Btrfs e compressão zstd
+# 2. Configurar fstab.conf com subvolumes Btrfs, compressão zstd e flags crypttab
 sudo tee /etc/calamares/modules/fstab.conf > /dev/null << 'FSTAB_CONF'
 ---
 mountOptions:
   default: defaults,noatime
   btrfs: defaults,noatime,compress=zstd:1,ssd,discard=async
+
+ssdExtraMountOptions:
+  btrfs: discard=async,compress=zstd:1
+
+crypttabOptions: luks,discard,no-read-workqueue,no-write-workqueue
 
 btrfsSubvolumes:
   - mountPoint: /
@@ -126,7 +131,38 @@ btrfsSubvolumes:
     subvolume: /@snapshots
 FSTAB_CONF
 
-# 3. Configurar módulo nativo shellprocess com os hooks de baixo nível
+# 3. Configurar users.conf com grupos modernos
+sudo tee /etc/calamares/modules/users.conf > /dev/null << 'USERS_CONF'
+---
+userGroup: users
+defaultGroups:
+  - sudo
+  - users
+  - audio
+  - video
+  - dialout
+  - plugdev
+  - netdev
+  - kvm
+  - bluetooth
+autologinGroup: autologin
+sudoersGroup: sudo
+setRootPassword: false
+doReusePassword: true
+
+defaultUsername: eu
+defaultHostname: fantasma
+
+passwordRequirements:
+  nonempty: true
+  minLength: -1
+  maxLength: -1
+  libpwquality:
+    - minlen=0
+    - minclass=0
+USERS_CONF
+
+# 4. Configurar módulo nativo shellprocess com os hooks de baixo nível
 sudo tee /etc/calamares/modules/shellprocess.conf > /dev/null << 'SHELL_CONF'
 ---
 dontChroot: false
