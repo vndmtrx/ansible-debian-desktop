@@ -471,27 +471,18 @@ else
 fi
 
 # -------------------------------------------------------------------------
-# 9. Atualizar initramfs e GRUB se houver alterações
+# 9. Atualizar initramfs e GRUB
 # -------------------------------------------------------------------------
-log_info "9/11 Verificando necessidade de compilação de initramfs e GRUB..."
+log_info "9/11 Atualizando initramfs e menu do GRUB..."
 
-if [ "$INITRAMFS_CHANGED" = true ]; then
-  log_step "Regerando imagens do initramfs (update-initramfs -u -k all)..."
-  update-initramfs -u -k all
-  log_applied "Initramfs regerado com sucesso."
-  record_action
-else
-  log_ok "Nenhuma alteração de subsistema de boot pendente para o initramfs."
-fi
+log_step "Regerando imagens do initramfs (update-initramfs -u -k all)..."
+update-initramfs -u -k all
+log_applied "Initramfs regerado com sucesso."
 
-if [ "$GRUB_CHANGED" = true ]; then
-  log_step "Regerando menu de boot do GRUB (update-grub)..."
-  update-grub
-  log_applied "GRUB atualizado com sucesso."
-  record_action
-else
-  log_ok "Nenhuma alteração pendente no GRUB."
-fi
+log_step "Regerando menu de boot do GRUB (update-grub)..."
+update-grub
+log_applied "GRUB atualizado com sucesso."
+record_action
 
 # -------------------------------------------------------------------------
 # 10. Instalar e ativar zram (swap comprimido em RAM)
