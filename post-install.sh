@@ -87,37 +87,24 @@ if [ -n "$ROOT_LUKS_DEV" ] && cryptsetup isLuks "$ROOT_LUKS_DEV" 2>/dev/null; th
     KEYFILE_FLAG=""
     if [ -f "/crypto_keyfile.bin" ]; then
       KEYFILE_FLAG="--key-file /crypto_keyfile.bin"
-      log_step "Usando /crypto_keyfile.bin para autorizar a recriação da chave..."
+      log_step "Usando /crypto_keyfile.bin para autorizar a remoção e recriação do Slot 0..."
     fi
 
-    # 1. Cria chave temporária no Slot 2 com iter-time 500
-    log_step "Adicionando chave calibrada no Slot 2 com --iter-time 500..."
-    if [ -n "$KEYFILE_FLAG" ]; then
-      cryptsetup luksAddKey "$ROOT_LUKS_DEV" $KEYFILE_FLAG --iter-time 500 -S 2
-    else
-      echo -e "  ${BOLD}Digite a senha do LUKS para autorizar a operação:${RESET}"
-      cryptsetup luksAddKey "$ROOT_LUKS_DEV" --iter-time 500 -S 2
-    fi
-
-    # 2. Mata o antigo Slot 0 pesado
+    # 1. Remove o antigo Slot 0 pesado (~5 a 6M iterações)
     log_step "Removendo antigo Slot 0 não-otimizado..."
     if [ -n "$KEYFILE_FLAG" ]; then
-      cryptsetup luksKillSlot "$ROOT_LUKS_DEV" 0 $KEYFILE_FLAG || true
+      cryptsetup luksKillSlot "$ROOT_LUKS_DEV" 0 $KEYFILE_FLAG
     else
-      cryptsetup luksKillSlot "$ROOT_LUKS_DEV" 0 || true
+      echo -e "  ${BOLD}Digite a senha atual do LUKS para autorizar a remoção do Slot 0 antigo:${RESET}"
+      cryptsetup luksKillSlot "$ROOT_LUKS_DEV" 0
     fi
 
-    # 3. Recria a chave no Slot 0 definitivo com iter-time 500
-    log_step "Gravando chave definitiva no Slot 0 com --iter-time 500..."
+    # 2. Cria a nova chave DIRETO no Slot 0 com iter-time 500
+    log_step "Gravando chave definitiva no Slot 0 com --iter-time 500 (solicitará a senha)..."
     if [ -n "$KEYFILE_FLAG" ]; then
       cryptsetup luksAddKey "$ROOT_LUKS_DEV" $KEYFILE_FLAG --iter-time 500 -S 0
-      log_step "Limpando Slot 2 temporário..."
-      cryptsetup luksKillSlot "$ROOT_LUKS_DEV" 2 $KEYFILE_FLAG || true
     else
-      echo -e "  ${BOLD}Digite a senha novamente para fixar no Slot 0:${RESET}"
       cryptsetup luksAddKey "$ROOT_LUKS_DEV" --iter-time 500 -S 0
-      log_step "Limpando Slot 2 temporário..."
-      cryptsetup luksKillSlot "$ROOT_LUKS_DEV" 2 || true
     fi
 
     log_applied "Chave do LUKS no Slot 0 calibrada em 500ms com sucesso!"
