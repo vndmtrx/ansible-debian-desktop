@@ -192,13 +192,15 @@ O script:
 2. Sincroniza a pasta modular [`ventoy/`](ventoy/) para o pendrive (`/scripts/`), comparando hash MD5:
    ```text
    /mnt/ventoy/scripts/
-   ├── apply-calamares.sh      <-- Injetor modular (compara hash MD5)
-   ├── post-install.sh         <-- Otimizador pós-instalação idempotente
-   ├── modules/                <-- Módulos declarativos do Calamares
-   │   ├── fstab.conf
-   │   ├── partition.conf
-   │   └── users.conf
-   └── ansible-debian-desktop/ <-- Clone local do repositório
+   ├── apply-calamares.sh                  <-- Injetor modular (compara hash MD5)
+   ├── post-install.sh                     <-- Otimizador pós-instalação idempotente
+   ├── modules/                            <-- Módulos declarativos do Calamares
+   │   ├── fstab.conf                      <-- Subvolumes Btrfs e flags síncronas
+   │   ├── partition.conf                  <-- LUKS2 PBKDF2 500ms
+   │   ├── users.conf                      <-- Grupos e usuário padrão
+   │   ├── shellprocess@grubcrypt.conf     <-- Ativa cryptodisk e módulos no GRUB
+   │   └── shellprocess@initramfs.conf     <-- Atualização do initramfs
+   └── ansible-debian-desktop/             <-- Clone local do repositório
    ```
 3. Versiona arquivos modificados (`.old.YYMMDDHHMMSS`) para evitar desgaste desnecessário da mídia Flash.
 4. Clona/atualiza o repositório Ansible para a mídia.
