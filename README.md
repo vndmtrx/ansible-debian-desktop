@@ -221,10 +221,19 @@ sudo ~/ventoy/scripts/apply-calamares.sh
 mkdir -p ~/ventoy && sudo mount -o ro $(sudo losetup -r -f --show /dev/sda1) ~/ventoy && sudo ~/ventoy/scripts/apply-calamares.sh
 ```
 
-Após concluir a instalação gráfica pelo Calamares, o `apply-calamares.sh` aplica as otimizações do `post-install.sh` automaticamente no target. Caso prefira aplicar diretamente no primeiro boot do sistema recém-instalado:
+Após concluir a instalação gráfica pelo Calamares, o `apply-calamares.sh` executa automaticamente as otimizações do [`post-install.sh`](post-install.sh) no target. Caso prefira aplicar diretamente no primeiro boot do sistema recém-instalado:
 ```bash
 sudo ./post-install.sh
 ```
+
+O **`post-install.sh`** aplica de forma 100% idempotente:
+1. **Pipeline NVMe síncrono & TRIM:** Injeta `discard,no-read-workqueue,no-write-workqueue` em `/etc/crypttab`.
+2. **Compressão zswap no kernel:** Ativa `zswap.enabled=1`, `zswap.compressor=zstd`, `zswap.zpool=zsmalloc` e `zswap.max_pool_percent=20` no GRUB.
+3. **Boot Rápido:** Remove `splash`, ajusta `GRUB_TIMEOUT=1` e executa `update-grub`.
+4. **Initramfs Otimizado:** Define `RESUME=none` em `/etc/initramfs-tools/conf.d/resume` e reconstrói a imagem com `update-initramfs -u`.
+5. **Sysctl NVMe:** Configura `/etc/sysctl.d/99-nvme-performance.conf` (`vm.swappiness=100`, `vm.vfs_cache_pressure=50`, etc.).
+6. **Scheduler NVMe:** Aplica regra udev `/etc/udev/rules.d/60-nvme-scheduler.rules` com scheduler `none`.
+7. **Bootstrap Mínimo:** Garante a presença dos pacotes essenciais `pipx`, `git`, `curl` e `sudo`.
 
 ---
 
