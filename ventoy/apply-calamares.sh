@@ -64,18 +64,13 @@ fi
 echo "==> Iniciando Calamares em modo verbose..."
 sudo calamares -d
 
-# 3. Hook pós-instalação: Aplicar otimizações e copiar repositório para o sistema instalado
+# 5. Hook pós-instalação: Copiar repositório para o usuário no sistema instalado
 TARGET_ROOT=$(findmnt -no TARGET /dev/mapper/luks-* 2>/dev/null | grep -E '^/tmp/' | head -n 1 || true)
 if [ -z "$TARGET_ROOT" ]; then
   TARGET_ROOT=$(findmnt -no TARGET -T /target 2>/dev/null || true)
 fi
 
 if [ -n "$TARGET_ROOT" ] && [ -d "$TARGET_ROOT/etc" ]; then
-  echo "==> Aplicando otimizações pós-instalação no sistema instalado ($TARGET_ROOT)..."
-  if [ -f "$SCRIPT_DIR/post-install.sh" ]; then
-    sudo bash "$SCRIPT_DIR/post-install.sh" "$TARGET_ROOT" || true
-  fi
-
   TARGET_USER=$(find "$TARGET_ROOT/home" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | grep -v 'lost+found' | head -n 1 || true)
   if [ -n "$TARGET_USER" ]; then
     echo "==> Copiando repositório Ansible para o usuário $TARGET_USER no sistema instalado..."
