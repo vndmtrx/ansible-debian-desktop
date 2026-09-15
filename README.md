@@ -227,16 +227,17 @@ sudo ./post-install.sh
 ```
 
 O **[`post-install.sh`](post-install.sh)** aplica de forma 100% idempotente:
-1. **GRUB Cryptodisk:** Habilita `GRUB_ENABLE_CRYPTODISK=y` e pré-carrega módulos `luks`, `crypto`, `btrfs` na imagem EFI.
-2. **Boot Rápido:** Remove `splash`, ajusta `GRUB_TIMEOUT=1`.
-3. **Eliminação do swap em disco:** Desativa e remove a partição de swap criptografada, limpa `/etc/fstab`, `/etc/crypttab` e o parâmetro `resume=` do GRUB.
-4. **Redimensionamento da raiz a quente:** Deleta a partição de swap morta, expande a partição raiz até o limite do disco e redimensiona o container LUKS e o filesystem (ext4 ou btrfs) online.
-5. **Pipeline NVMe síncrono & TRIM:** Injeta `discard,no-read-workqueue,no-write-workqueue` em `/etc/crypttab`.
-6. **Initramfs Otimizado:** Define `RESUME=none` e regenera a imagem.
-7. **Sysctl NVMe:** Configura `/etc/sysctl.d/99-nvme-performance.conf` (`vm.swappiness=100`, etc.).
-8. **Scheduler NVMe:** Aplica regra udev com scheduler `none`.
-9. **Swap comprimido em RAM (zram):** Instala `zram-tools` com compressão `zstd`, substituindo o swap em disco por um dispositivo de bloco comprimido na memória RAM.
-10. **Bootstrap Mínimo:** Instala `pipx`, `git`, `curl` e `sudo`.
+1. **Calibração de Boot LUKS:** Recria a chave no **Slot 0** com PBKDF2 em 500ms (`--iter-time 500`), reduzindo iterações de 6M para ~1.4M e eliminando o atraso de descriptografia no GRUB.
+2. **GRUB Cryptodisk:** Habilita `GRUB_ENABLE_CRYPTODISK=y` e pré-carrega módulos `luks`, `crypto`, `btrfs` na imagem EFI.
+3. **Boot Rápido:** Remove `splash`, ajusta `GRUB_TIMEOUT=1`.
+4. **Eliminação do swap em disco:** Desativa e remove a partição de swap criptografada, limpa `/etc/fstab`, `/etc/crypttab` e o parâmetro `resume=` do GRUB.
+5. **Redimensionamento da raiz a quente:** Deleta a partição de swap morta, expande a partição raiz até o limite do disco e redimensiona o container LUKS e o filesystem (ext4 ou btrfs) online.
+6. **Pipeline NVMe síncrono & TRIM:** Injeta `discard,no-read-workqueue,no-write-workqueue` em `/etc/crypttab`.
+7. **Initramfs Otimizado:** Define `RESUME=none` e regenera a imagem.
+8. **Sysctl NVMe:** Configura `/etc/sysctl.d/99-nvme-performance.conf` (`vm.swappiness=100`, etc.).
+9. **Scheduler NVMe:** Aplica regra udev com scheduler `none`.
+10. **Swap comprimido em RAM (zram):** Instala `zram-tools` com compressão `zstd`, substituindo o swap em disco por um dispositivo de bloco comprimido na memória RAM.
+11. **Bootstrap Mínimo:** Instala `pipx`, `git`, `curl` e `sudo`.
 
 ---
 
