@@ -1,5 +1,6 @@
 ---
 # sistema/tasks/00-base.yaml
+# yamllint disable rule:line-length
 
 - name: Configura o TZ para o Brasil
   community.general.timezone:
@@ -16,6 +17,53 @@
   ansible.builtin.command: timedatectl set-ntp true
   become: true
   when: ntp_status.stdout != 'yes'
+
+- name: Garante suporte ao formato DEB822 (python3-debian)
+  ansible.builtin.apt:
+    name: python3-debian
+    state: present
+  become: true
+
+- name: Configura repositório oficial do Debian Trixie (DEB822)
+  ansible.builtin.deb822_repository:
+    name: debian
+    types:
+      - deb
+      - deb-src
+    uris:
+      - http://deb.debian.org/debian/
+    suites:
+      - trixie
+      - trixie-updates
+    components:
+      - main
+      - contrib
+      - non-free
+      - non-free-firmware
+    signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
+    state: present
+    enabled: true
+  become: true
+
+- name: Configura repositório de segurança do Debian Trixie (DEB822)
+  ansible.builtin.deb822_repository:
+    name: debian-security
+    types:
+      - deb
+      - deb-src
+    uris:
+      - http://security.debian.org/debian-security/
+    suites:
+      - trixie-security
+    components:
+      - main
+      - contrib
+      - non-free
+      - non-free-firmware
+    signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
+    state: present
+    enabled: true
+  become: true
 
 - name: Atualiza cache do apt
   ansible.builtin.apt:
@@ -103,12 +151,26 @@
     state: present
   become: true
 
-- name: Habilita serviços de sistema
+- name: Habilita serviços e timers de integridade do sistema
   ansible.builtin.systemd_service:
     name: "{{ item }}"
     state: started
     enabled: true
   loop: "{{ servicos_sistema }}"
+  become: true
+
+- name: Mascara serviços para eliminar bloqueios durante o boot
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    masked: true
+  loop: "{{ servicos_mascarados }}"
+  become: true
+
+- name: Desabilita serviços desnecessários de espera de rede
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: false
+  loop: "{{ servicos_desabilitados }}"
   become: true
 
 - name: Permite conexões SSH no firewall
