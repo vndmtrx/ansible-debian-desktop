@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# apply-calamares.sh: Injeta configurações modulares no Calamares do Debian Live
+# Compara hash MD5 antes de substituir e executa o post-install no target
+# ==============================================================================
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENTOY_DIR="$(dirname "$SCRIPT_DIR")"
+CALAMARES_MODULES_DIR="/etc/calamares/modules"
+
+echo "==> [Calamares-Setup] Verificando e aplicando configurações declarativas..."
+
+sudo mkdir -p "$CALAMARES_MODULES_DIR"
+
+# 1. Injetar módulos comparando hash MD5
+if [ -d "$SCRIPT_DIR/modules" ]; then
+  for src_file in "$SCRIPT_DIR/modules"/*.conf; do
+    [ -f "$src_file" ] || continue
+    fname=$(basename "$src_file")
+    dest_file="$CALAMARES_MODULES_DIR/$fname"
+
+    if [ -f "$dest_file" ]; then
+      src_hash=$(md5sum "$src_file" | awk '{print $1}')
+      dest_hash=$(md5sum "$dest_file" | awk '{print $1}')
+
+      if [ "$src_hash" = "$dest_hash" ]; then
+        echo "  [=] Módulo inalterado (MD5 idêntico): $fname"
+        continue
+      else
+        timestamp=$(date +%y%m%d%H%M%S)
+        echo "  [~] Módulo $fname modificado. Fazendo backup do original..."
+        sudo cp "$dest_file" "${dest_file}.old.${timestamp}"
+      fi
+    else
+      echo "  [+] Injetando novo módulo: $fname"
+    fi
+
+    sudo cp "$src_file" "$dest_file"
+  done
+fi
+
+# 2. Iniciar o Calamares
+echo "==> Iniciando Calamares em modo verbose..."
+sudo calamares -d
+
+# 3. Hook pós-instalação: Aplicar otimizações e copiar repositório para o sistema instalado
+TARGET_ROOT=$(findmnt -no TARGET /dev/mapper/luks-* 2>/dev/null | grep -E '^/tmp/' | head -n 1 || true)
+if [ -z "$TARGET_ROOT" ]; then
+  TARGET_ROOT=$(findmnt -no TARGET -T /target 2>/dev/null || true)
+fi
+
+if [ -n "$TARGET_ROOT" ] && [ -d "$TARGET_ROOT/etc" ]; then
+  echo "==> Aplicando otimizações pós-instalação no sistema instalado ($TARGET_ROOT)..."
+  if [ -f "$SCRIPT_DIR/post-install.sh" ]; then
+    sudo bash "$SCRIPT_DIR/post-install.sh" "$TARGET_ROOT" || true
+  fi
+
+  TARGET_USER=$(find "$TARGET_ROOT/home" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | grep -v 'lost+found' | head -n 1 || true)
+  if [ -n "$TARGET_USER" ]; then
+    echo "==> Copiando repositório Ansible para o usuário $TARGET_USER no sistema instalado..."
+    USER_DEST="$TARGET_ROOT/home/$TARGET_USER/du/dev/github"
+    mkdir -p "$USER_DEST"
+    if [ -d "$VENTOY_DIR/scripts/ansible-debian-desktop" ]; then
+      cp -r "$VENTOY_DIR/scripts/ansible-debian-desktop" "$USER_DEST/"
+      chmod +x "$USER_DEST/ansible-debian-desktop/"*.sh 2>/dev/null || true
+      chown -R 1000:1000 "$TARGET_ROOT/home/$TARGET_USER/du" 2>/dev/null || true
+    fi
+  fi
+fi
+
+echo "==> Processo finalizado com sucesso!"
