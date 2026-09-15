@@ -5,14 +5,39 @@
 # ==============================================================================
 set -euo pipefail
 
-echo "==> Verificando montagem da partição de dados do Ventoy (/dev/sda1)..."
-sudo mkdir -p /mnt/ventoy
-if ! mountpoint -q /mnt/ventoy; then
-  sudo mount /dev/sda1 /mnt/ventoy
+echo "==> Localizando ponto de montagem do pendrive Ventoy..."
+
+# 1. Verifica se já está montado pelo desktop (/media/$USER/Ventoy, /mnt/ventoy, etc.)
+VENTOY_MOUNT=$(findmnt -no TARGET -S LABEL=Ventoy 2>/dev/null | head -n 1 || true)
+
+if [ -z "$VENTOY_MOUNT" ]; then
+  # Se não achou por LABEL, tenta por dispositivo /dev/disk/by-label/Ventoy
+  VENTOY_DEV=$(blkid -L Ventoy 2>/dev/null || lsblk -lpo NAME,LABEL 2>/dev/null | grep -i "Ventoy" | awk '{print $1}' | head -n 1 || true)
+
+  if [ -n "$VENTOY_DEV" ]; then
+    VENTOY_MOUNT=$(findmnt -no TARGET "$VENTOY_DEV" 2>/dev/null | head -n 1 || true)
+  fi
 fi
 
+# 2. Se não estiver montado em lugar nenhum, monta em /mnt/ventoy
+if [ -z "$VENTOY_MOUNT" ]; then
+  VENTOY_DEV=$(blkid -L Ventoy 2>/dev/null || lsblk -lpo NAME,LABEL 2>/dev/null | grep -i "Ventoy" | awk '{print $1}' | head -n 1 || true)
+  if [ -z "$VENTOY_DEV" ]; then
+    VENTOY_DEV="/dev/sda1"
+  fi
+
+  VENTOY_MOUNT="/mnt/ventoy"
+  echo "    Mídia não montada. Montando $VENTOY_DEV em $VENTOY_MOUNT..."
+  sudo mkdir -p "$VENTOY_MOUNT"
+  if ! mountpoint -q "$VENTOY_MOUNT"; then
+    sudo mount "$VENTOY_DEV" "$VENTOY_MOUNT"
+  fi
+fi
+
+echo "==> Utilizando partição Ventoy em: $VENTOY_MOUNT"
+
 echo "==> Criando árvore de diretórios..."
-sudo mkdir -p /mnt/ventoy/scripts /mnt/ventoy/backup
+sudo mkdir -p "$VENTOY_MOUNT/scripts" "$VENTOY_MOUNT/backup"
 
 # -------------------------------------------------------------------------
 # Função auxiliar para criação declarativa e versionamento seguro de arquivos
@@ -57,7 +82,7 @@ write_declarative_file() {
 # -------------------------------------------------------------------------
 echo "==> Gerando injetor apply-calamares.sh..."
 
-write_declarative_file /mnt/ventoy/scripts/apply-calamares.sh << 'EOF'
+write_declarative_file "$VENTOY_MOUNT/scripts/apply-calamares.sh" << 'EOF'
 #!/usr/bin/env bash
 # ==============================================================================
 # apply-calamares.sh: Injeta otimizações no Calamares nativo do Debian Live
@@ -65,35 +90,9 @@ write_declarative_file /mnt/ventoy/scripts/apply-calamares.sh << 'EOF'
 # ==============================================================================
 set -euo pipefail
 
-# -------------------------------------------------------------------------
-# Montagem resiliente da partição do Ventoy no Debian Live
-# Lida com o lock exclusivo do device-mapper criando loop device ro se necessário
-# -------------------------------------------------------------------------
-sudo mkdir -p /mnt/ventoy
-if ! mountpoint -q /mnt/ventoy; then
-  VENTOY_DEV=$(blkid -L Ventoy 2>/dev/null || lsblk -lpo NAME,LABEL 2>/dev/null | grep -i "Ventoy" | awk '{print $1}' | head -n 1 || true)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENTOY_DIR="$(dirname "$SCRIPT_DIR")"
 
-  if [ -z "$VENTOY_DEV" ]; then
-    VENTOY_DEV="/dev/sda1"
-  fi
-
-  echo "==> Tentando montar mídia Ventoy ($VENTOY_DEV)..."
-  if ! sudo mount -t exfat -o ro "$VENTOY_DEV" /mnt/ventoy 2>/dev/null && ! sudo mount -o ro "$VENTOY_DEV" /mnt/ventoy 2>/dev/null; then
-    echo "==> Device bloqueado pelo dm-mapper do Ventoy. Criando loop device desacoplado em modo read-only..."
-    LOOP_DEV=$(sudo losetup -r -f --show "$VENTOY_DEV" 2>/dev/null || true)
-    if [ -n "$LOOP_DEV" ]; then
-      echo "    Loop device criado: $LOOP_DEV"
-      sudo mount -o ro "$LOOP_DEV" /mnt/ventoy 2>/dev/null || true
-    fi
-  fi
-fi
-
-if ! mountpoint -q /mnt/ventoy; then
-  echo "ERRO: Não foi possível montar a partição do Ventoy em /mnt/ventoy."
-  exit 1
-fi
-
-echo "==> Partição Ventoy montada com sucesso em /mnt/ventoy."
 echo "==> Injetando configurações de baixo nível no Calamares do Debian Live..."
 
 # 1. Configurar partition.conf (Btrfs padrão + LUKS2 PBKDF2 500ms)
@@ -175,7 +174,7 @@ fi
 echo "==> Iniciando Calamares em modo verbose..."
 sudo calamares -d
 
-# 5. Hook pós-instalação: Copiar repositório e backups se a partição target estiver montada
+# 5. Hook pós-instalação: Copiar repositório para a partição target instalada
 TARGET_ROOT=$(findmnt -no TARGET /dev/mapper/luks-* 2>/dev/null | grep -E '^/tmp/' | head -n 1 || true)
 if [ -z "$TARGET_ROOT" ]; then
   TARGET_ROOT=$(findmnt -no TARGET -T /target 2>/dev/null || true)
@@ -187,20 +186,20 @@ if [ -n "$TARGET_ROOT" ] && [ -d "$TARGET_ROOT/home" ]; then
     echo "==> Copiando repositório Ansible para o usuário $TARGET_USER no sistema instalado..."
     USER_DEST="$TARGET_ROOT/home/$TARGET_USER/du/dev/github"
     mkdir -p "$USER_DEST"
-    if [ -d /mnt/ventoy/scripts/ansible-debian-desktop ]; then
-      cp -r /mnt/ventoy/scripts/ansible-debian-desktop "$USER_DEST/"
+    if [ -d "$VENTOY_DIR/scripts/ansible-debian-desktop" ]; then
+      cp -r "$VENTOY_DIR/scripts/ansible-debian-desktop" "$USER_DEST/"
       chmod +x "$USER_DEST/ansible-debian-desktop/"*.sh 2>/dev/null || true
       chown -R 1000:1000 "$TARGET_ROOT/home/$TARGET_USER/du" 2>/dev/null || true
     fi
   fi
 fi
 EOF
-sudo chmod +x /mnt/ventoy/scripts/apply-calamares.sh
+sudo chmod +x "$VENTOY_MOUNT/scripts/apply-calamares.sh"
 
 # -------------------------------------------------------------------------
 # Sincronização do repositório no pendrive (sem reter diretório aberto)
 # -------------------------------------------------------------------------
-REPO_TARGET="/mnt/ventoy/scripts/ansible-debian-desktop"
+REPO_TARGET="$VENTOY_MOUNT/scripts/ansible-debian-desktop"
 if [ ! -d "$REPO_TARGET" ]; then
   echo "==> Clonando ansible-debian-desktop..."
   sudo git clone https://github.com/vndmtrx/ansible-debian-desktop.git "$REPO_TARGET"
@@ -213,7 +212,7 @@ fi
 # Sincronização segura de backups de ~/du/backups para a mídia Ventoy
 # -------------------------------------------------------------------------
 LOCAL_BACKUP_DIR="${HOME}/du/backups"
-VENTOY_BACKUP_DIR="/mnt/ventoy/backup"
+VENTOY_BACKUP_DIR="$VENTOY_MOUNT/backup"
 
 if [ -d "$LOCAL_BACKUP_DIR" ]; then
   echo "==> Verificando backups locais em $LOCAL_BACKUP_DIR..."
@@ -238,4 +237,4 @@ if [ -d "$LOCAL_BACKUP_DIR" ]; then
 fi
 
 sync
-echo "==> Concluído com sucesso. Desmonte com: sudo umount /mnt/ventoy"
+echo "==> Concluído com sucesso na mídia em $VENTOY_MOUNT."
