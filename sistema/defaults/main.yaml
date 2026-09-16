@@ -157,7 +157,7 @@ asdf_instalacao_limpa: false
 
 # Configurações do SDKMAN! (Java e Maven)
 # Usado em: sistema/tasks/05-sdkman.yaml
-versao_java: '26-tem'
+versao_java: '27-tem'
 versao_maven: '3.9.16'
 
 # Versões do Erlang e Elixir instaladas via ASDF
