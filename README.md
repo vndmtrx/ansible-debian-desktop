@@ -48,7 +48,8 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
 - Configuração do `extrepo` para Debian Trixie habilitando os repositórios oficiais:
   - **LibreWolf:** Navegador principal focado em privacidade.
   - **VSCodium:** Editor de código com telemetria desativada.
-  - **Docker CE & HashiCorp:** Repositórios oficiais utilizados na stack de virtualização.
+  - **Docker CE:** Repositório oficial utilizado na stack de virtualização e containers.
+  - **Tailscale:** Repositório oficial para a VPN Mesh.
 
 ### 3. Ambiente do Usuário & Shell (`02-usuario.yaml`)
 - **Padrão XDG & Estrutura de Trabalho:**

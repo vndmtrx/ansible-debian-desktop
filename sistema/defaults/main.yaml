@@ -113,7 +113,6 @@ repos_extrepo:
   - librewolf
   - vscodium
   - docker-ce
-  - hashicorp
   - tailscale
 
 # Pacotes a serem instalados dos repositórios Extrepo
