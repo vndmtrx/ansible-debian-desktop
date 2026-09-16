@@ -9,10 +9,6 @@
 # Usado em: sistema/tasks/00-base.yaml
 atualiza_sistema: false
 
-# Controla se o firmware da máquina será atualizado via fwupd (LVFS)
-# Usado em: sistema/tasks/00-base.yaml
-atualiza_firmware: false
-
 # E-mail de comentário para chave SSH pública id_ed25519
 # Usado em: sistema/tasks/02-usuario.yaml
 ssh_key_email: "vndmtrx@duck.com"

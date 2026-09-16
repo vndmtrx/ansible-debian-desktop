@@ -260,7 +260,6 @@ Alinhado às melhores práticas do Ansible (níveis de precedência):
 | Variável | Descrição | Padrão |
 | :--- | :--- | :--- |
 | `atualiza_sistema` | Executa `apt upgrade` completo do sistema | `false` |
-| `atualiza_firmware` | Executa atualização de firmware via `fwupdmgr` (LVFS) | `false` |
 | `versao_java` | Identificador do Java no SDKMAN! | `'26-tem'` |
 | `versao_maven` | Versão do Apache Maven no SDKMAN! | `'3.9.16'` |
 | `versao_erlang` | Versão do Erlang/OTP compilada via ASDF | `'29.0.6'` |
