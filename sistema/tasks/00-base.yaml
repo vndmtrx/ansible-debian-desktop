@@ -7,17 +7,6 @@
     name: America/Sao_Paulo
   become: true
 
-- name: Verifica status do NTP
-  ansible.builtin.command: timedatectl show --property=NTP --value
-  register: ntp_status
-  changed_when: false
-  become: true
-
-- name: Habilita sincronização de hora via NTP
-  ansible.builtin.command: timedatectl set-ntp true
-  become: true
-  when: ntp_status.stdout != 'yes'
-
 - name: Garante suporte ao formato DEB822 (python3-debian)
   ansible.builtin.apt:
     name: python3-debian
@@ -158,6 +147,17 @@
     enabled: true
   loop: "{{ servicos_sistema }}"
   become: true
+
+- name: Verifica status do NTP
+  ansible.builtin.command: timedatectl show --property=NTP --value
+  register: ntp_status
+  changed_when: false
+  become: true
+
+- name: Habilita sincronização de hora via NTP
+  ansible.builtin.command: timedatectl set-ntp true
+  become: true
+  when: ntp_status.stdout != 'yes'
 
 - name: Mascara serviços para eliminar bloqueios durante o boot
   ansible.builtin.systemd_service:
