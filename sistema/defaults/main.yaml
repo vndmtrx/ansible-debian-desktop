@@ -61,7 +61,6 @@ servicos_sistema:
   - systemd-timesyncd.service
   - cron.service
   - fstrim.timer
-  - btrfs-scrub.timer
 
 # Serviços a serem mascarados ou desabilitados para acelerar o boot e evitar esperas
 # Usado em: sistema/tasks/00-base.yaml
@@ -165,9 +164,9 @@ versao_maven: '3.9.16'
 versao_erlang: '29.0.6'
 versao_elixir: '1.20.4-otp-29'
 
-# Diretórios que devem ter No-CoW (+C) no Btrfs para evitar fragmentação e sobrecarga de I/O
+# Diretórios base para Docker e Libvirt
 # Usado em: sistema/tasks/06-virtualizacao-containers.yaml
-diretorios_nocow_virt:
+diretorios_virt:
   - /var/lib/docker
   - /var/lib/libvirt/images
 

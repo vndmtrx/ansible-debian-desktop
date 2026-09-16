@@ -235,7 +235,7 @@ cd ~/du/dev/github/ansible-debian-desktop
 
 As otimizações manuais de baixo nível eliminam gargalos históricos de particionamento, bootloader e escalonamento antes do Ansible assumir o sistema:
 1. **Calibração de Boot LUKS:** Recria a chave no **Slot 0** com PBKDF2 em 500ms (`--iter-time 500`), reduzindo iterações de 6M para ~1.4M e eliminando o atraso de descriptografia no GRUB.
-2. **GRUB Cryptodisk:** Habilita `GRUB_ENABLE_CRYPTODISK=y` e pré-carrega módulos `luks`, `crypto`, `btrfs` na imagem EFI.
+2. **GRUB Cryptodisk:** Habilita `GRUB_ENABLE_CRYPTODISK=y` e pré-carrega módulos `luks`, `crypto`, `gcry_rijndael`, `gcry_sha256` na imagem EFI.
 3. **Boot Rápido:** Remove `splash`, ajusta `GRUB_TIMEOUT=1`.
 4. **Eliminação do swap em disco:** Desativa e remove a partição de swap criptografada, limpa `/etc/fstab`, `/etc/crypttab` e o parâmetro `resume=` do GRUB.
 5. **Redimensionamento da raiz a quente:** Deleta a partição de swap morta, expande a partição raiz até o limite do disco e redimensiona o container LUKS e o filesystem online.
