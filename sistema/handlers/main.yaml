@@ -11,3 +11,9 @@
     executable: /bin/bash
   become: false
   changed_when: true
+
+# Handler para sincronização de metadados e chaves do Extrepo
+- name: Atualiza metadados do extrepo
+  ansible.builtin.command: extrepo update
+  become: true
+  changed_when: true

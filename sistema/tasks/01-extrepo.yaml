@@ -12,6 +12,7 @@
       failed_when:
         - extrepo_install.failed is defined
         - extrepo_install.failed
+      notify: Atualiza metadados do extrepo
 
     - name: Configura políticas de licença do extrepo
       ansible.builtin.copy:
@@ -31,12 +32,10 @@
         owner: root
         group: root
       when: extrepo_install is succeeded
-      register: extrepo_config
+      notify: Atualiza metadados do extrepo
 
-    - name: Atualiza metadados e chaves criptográficas do extrepo
-      ansible.builtin.command: extrepo update
-      changed_when: false
-      when: extrepo_install is succeeded
+    - name: Força atualização dos metadados do extrepo se houve alterações
+      ansible.builtin.meta: flush_handlers
 
     - name: Verifica repositórios extrepo existentes
       ansible.builtin.stat:
