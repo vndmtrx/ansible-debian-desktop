@@ -204,7 +204,7 @@ O script:
 
 1. **Boot pelo Ventoy:** Selecione a ISO do Debian Live GNOME no menu do Ventoy.
 2. **Instalação Gráfica padrão:** Execute o Calamares normalmente. Na tela de partição, marque **"Apagar disco"** e **"Criptografar sistema"**.
-3. **Primeiro Boot — Otimizações de baixo nível:** Ao reiniciar no SSD recém-instalado, monte o pendrive e copie o repositório:
+3. **Primeiro Boot — Otimizações de baixo nível e Provisionamento:** Ao reiniciar no SSD recém-instalado, monte o pendrive, copie o repositório e execute as calibrações de baixo nível conforme a colinha do [artigo de otimização de boot LUKS](https://vndmtrx.github.io/posts/otimizacao-boot-luks/#colinha-rapida-para-a-proxima-formatacao):
 
 ```bash
 # 1. Copiar repositório do pendrive
@@ -215,30 +215,39 @@ cp -r /media/$USER/Ventoy/scripts/ansible-debian-desktop ~/du/dev/github/
 mkdir -p ~/du/backups
 cp -p /media/$USER/Ventoy/backup/* ~/du/backups/ 2>/dev/null || true
 
-# 3. Aplicar otimizações de NVMe, GRUB, zram e sysctl
-cd ~/du/dev/github/ansible-debian-desktop
-sudo ./post-install.sh
+# 3. Executar as calibrações de Day-0 manualmente (conforme a colinha do post de LUKS):
+# - Slot 0 com PBKDF2 em 500ms
+# - Injeção das flags no crypttab (discard,no-read-workqueue,no-write-workqueue)
+# - Expurgo do swap no fstab, crypttab e grub (RESUME=none e update-initramfs)
+# - Instalação do zram-tools
+# - Redimensionamento da partição raiz a quente (parted rm, resizepart, cryptsetup resize, resize2fs)
+# - Otimização de userspace (mask plymouth-quit-wait e disable NetworkManager-wait-online)
 
 # 4. Opcional: restaurar chaves SSH, GPG, chaveiro GNOME e atalhos
+cd ~/du/dev/github/ansible-debian-desktop
 ./restore.sh
 
 # 5. Disparar o provisionamento completo do ambiente
 ./bootstrap.sh
 ```
 
-O **[`post-install.sh`](post-install.sh)** aplica de forma 100% idempotente:
+### 📋 Roteiro de Calibração Manual (Day-0 / Day-1)
+
+As otimizações manuais de baixo nível eliminam gargalos históricos de particionamento, bootloader e escalonamento antes do Ansible assumir o sistema:
 1. **Calibração de Boot LUKS:** Recria a chave no **Slot 0** com PBKDF2 em 500ms (`--iter-time 500`), reduzindo iterações de 6M para ~1.4M e eliminando o atraso de descriptografia no GRUB.
 2. **GRUB Cryptodisk:** Habilita `GRUB_ENABLE_CRYPTODISK=y` e pré-carrega módulos `luks`, `crypto`, `btrfs` na imagem EFI.
 3. **Boot Rápido:** Remove `splash`, ajusta `GRUB_TIMEOUT=1`.
 4. **Eliminação do swap em disco:** Desativa e remove a partição de swap criptografada, limpa `/etc/fstab`, `/etc/crypttab` e o parâmetro `resume=` do GRUB.
-5. **Redimensionamento da raiz a quente:** Deleta a partição de swap morta, expande a partição raiz até o limite do disco e redimensiona o container LUKS e o filesystem (ext4 ou btrfs) online.
+5. **Redimensionamento da raiz a quente:** Deleta a partição de swap morta, expande a partição raiz até o limite do disco e redimensiona o container LUKS e o filesystem online.
 6. **Pipeline NVMe síncrono & TRIM:** Injeta `discard,no-read-workqueue,no-write-workqueue` em `/etc/crypttab`.
-7. **Initramfs Otimizado:** Define `RESUME=none` e regenera a imagem.
+7. **Initramfs Otimizado:** Define `RESUME=none`, regera imagens com `update-initramfs -u -k all` e atualiza o GRUB.
 8. **Sysctl NVMe:** Configura `/etc/sysctl.d/99-nvme-performance.conf` (`vm.swappiness=100`, etc.).
 9. **Scheduler NVMe:** Aplica regra udev com scheduler `none`.
 10. **Otimização de Userspace:** Mascara `plymouth-quit-wait.service` (elimina até 21s de atraso no display manager) e desativa `NetworkManager-wait-online.service` (elimina 3-5s de retenção desnecessária).
 11. **Swap comprimido em RAM (zram):** Instala `zram-tools` com compressão `zstd`, substituindo o swap em disco por um dispositivo de bloco comprimido na memória RAM.
 12. **Bootstrap Mínimo:** Instala `pipx`, `git`, `curl` e `sudo`.
+
+Para o passo a passo detalhado com cada comando de análise, atuação e verificação, consulte a [Colinha rápida para a próxima formatação](https://vndmtrx.github.io/posts/otimizacao-boot-luks/#colinha-rapida-para-a-proxima-formatacao).
 
 ---
 
