@@ -1,15 +1,14 @@
 ---
 # sistema/tasks/06-virtualizacao-containers.yaml
 
-- name: Garante diretórios com No-CoW (+C) para Docker e Libvirt antes da instalação
+- name: Garante diretórios base para Docker e Libvirt antes da instalação
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     owner: root
     group: root
     mode: '0711'
-    attributes: +C
-  loop: "{{ diretorios_nocow_virt }}"
+  loop: "{{ diretorios_virt }}"
   become: true
 
 - name: Instala pacotes de virtualização e containers
