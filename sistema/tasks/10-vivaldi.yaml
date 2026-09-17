@@ -33,6 +33,7 @@
         mode: '0644'
         owner: root
         group: root
+        force: false
       register: vivaldi_repo
 
     - name: Atualiza cache do apt se o repositório do Vivaldi foi alterado
