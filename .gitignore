@@ -1,0 +1,13 @@
+# Ambientes de teste e arquivos locais
+testbed/
+*.iso
+*.qcow2
+*.ppm
+*.png
+
+# Backups locais e temporários
+*.tar.bz2.gpg
+*.retry
+*.log
+.cache/
+__pycache__/
