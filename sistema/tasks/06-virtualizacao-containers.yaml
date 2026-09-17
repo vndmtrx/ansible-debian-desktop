@@ -7,7 +7,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0711'
+    mode: '0710'
   loop: "{{ diretorios_virt }}"
   become: true
 
