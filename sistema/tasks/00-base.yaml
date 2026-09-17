@@ -106,17 +106,6 @@
   loop: "{{ servicos_sistema }}"
   become: true
 
-- name: Verifica status do NTP
-  ansible.builtin.command: timedatectl show --property=NTP --value
-  register: ntp_status
-  changed_when: false
-  become: true
-
-- name: Habilita sincronização de hora via NTP
-  ansible.builtin.command: timedatectl set-ntp true
-  become: true
-  when: ntp_status.stdout != 'yes'
-
 - name: Mascara serviços para eliminar bloqueios durante o boot
   ansible.builtin.systemd_service:
     name: "{{ item }}"
@@ -154,6 +143,30 @@
     src: /etc/profile.d/vte-2.91.sh
     dest: /etc/profile.d/vte.sh
     state: link
+  become: true
+
+- name: Configura prompt vermelho e suporte a cores para o root no .bashrc
+  ansible.builtin.blockinfile:
+    path: /root/.bashrc
+    marker: "# {mark} ANSIBLE ROOT PROMPT CONFIGURATION"
+    create: true
+    mode: '0644'
+    block: |
+      # Prompt com destaque em vermelho para o superusuário root
+      export PS1='${debian_chroot:+($debian_chroot)}\[\033[01;31m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+      export LS_OPTIONS='--color=auto'
+      eval "$(dircolors)"
+      alias ls='ls $LS_OPTIONS'
+      alias ll='ls $LS_OPTIONS -lah'
+      alias grep='grep --color=auto'
+      alias ip='ip --color=auto'
+      if [ $TILIX_ID ] || [ $VTE_VERSION ]; then
+        if [ -f /etc/profile.d/vte.sh ]; then
+          source /etc/profile.d/vte.sh
+        elif [ -f /etc/profile.d/vte-2.91.sh ]; then
+          source /etc/profile.d/vte-2.91.sh
+        fi
+      fi
   become: true
 
 - name: Instala repositório Flathub
