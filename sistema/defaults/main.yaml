@@ -83,6 +83,11 @@ apps_terminal:
   - glances
   - fzf
   - tailspin
+  - bat
+  - fd-find
+  - duf
+  - procs
+  - du-dust
 
 # Aplicações com interface gráfica
 # Usado em: sistema/tasks/00-base.yaml
@@ -126,13 +131,31 @@ pacotes_extrepo:
 diretorios_usuario:
   - "{{ ansible_env.HOME }}/du/dev"
   - "{{ ansible_env.HOME }}/du/conf"
-  - "{{ ansible_env.HOME }}/du/backups"
   - "{{ ansible_env.HOME }}/du/dev/tensor"
   - "{{ ansible_env.HOME }}/du/dev/github"
   - "{{ ansible_env.HOME }}/du/dev/docker-stacks"
 
 # Aliases para o Bash
 # Usado em: sistema/tasks/02-usuario.yaml
+# Descrição dos aliases:
+#   - Versões coloridas/modernas de comandos comuns:
+#       ip, ls, grep, ll, eza
+#   - Utilitários CLI e atalhos de produtividade:
+#       ts: Visualizador de logs com highlight automático de sintaxe (tailspin)
+#       vg: Atalho rápido para gerenciar VMs com o Vagrant
+#       jc: Acompanha logs do systemd (journalctl -f) colorizados via tailspin
+#       mtr: Diagnóstico interativo de latência/perda de pacotes em modo texto
+#       rebootbios: Reinicia o sistema diretamente no setup do firmware UEFI/BIOS
+#       bat: Visualizador de arquivos com syntax highlighting (Debian batcat)
+#       fd: Busca ultrarrápida de arquivos e diretórios (Debian fdfind)
+#       du: Análise gráfica e intuitiva de uso de disco (dust)
+#   - Ambientes em containers descartáveis:
+#       tensor: Sobe container interativo do Jupyter/TensorFlow na porta 8888 (--rm)
+#       plantuml: Sobe servidor local Jetty do PlantUML na porta 8080 (--rm)
+#   - Scripts locais de segurança e configuração:
+#       salvar-extensoes: Exporta configurações ativas do dconf para ~/du/conf/
+#       backup-seguranca: Cria backup comprimido e criptografado com GPG
+#       restore-seguranca: Restaura dotfiles e chaves criptografadas no $HOME
 aliases_bash:
   - 'ip="ip --color=auto"'
   - 'ls="eza --color=auto"'
@@ -143,6 +166,7 @@ aliases_bash:
   - 'jc="sudo journalctl -f | tspin"'
   - 'mtr="mtr -t"'
   - 'rebootbios="sudo systemctl reboot --firmware"'
+  - 'eza="eza --color=auto"'
   - 'tensor="docker run -it --rm -p 8888:8888 -v $HOME/du/dev/tensor:/tf/notebooks tensorflow/tensorflow:latest-jupyter"'
   - 'plantuml="docker run -it --rm -p 8080:8080 plantuml/plantuml-server:jetty"'
   - 'salvar-extensoes="$HOME/.local/bin/salvar-extensoes"'
@@ -154,14 +178,13 @@ aliases_bash:
 versao_asdf: 'v0.20.0'
 asdf_instalacao_limpa: false
 
-# Configurações do SDKMAN! (Java e Maven)
+# Versão do Java instalada via SDKMAN
 # Usado em: sistema/tasks/05-sdkman.yaml
 versao_java: '26-tem'
-versao_maven: '3.9.16'
 
 # Versões do Erlang e Elixir instaladas via ASDF
 # Usado em: sistema/tasks/04-asdf-shims.yaml
-versao_erlang: '29.0.6'
+versao_erlang: '29.1'
 versao_elixir: '1.20.4-otp-29'
 
 # Diretórios base para Docker e Libvirt
@@ -194,7 +217,7 @@ plugins_vagrant:
   - vagrant-cachier
   - vagrant-hostmanager
 
-# Grupos necessários para o usuário no módulo de virtualização
+# Grupos de sistema adicionados ao usuário principal
 # Usado em: sistema/tasks/06-virtualizacao-containers.yaml
 grupos_virt:
   - libvirt
@@ -205,7 +228,7 @@ grupos_virt:
 # Serviços que devem estar ativos
 # Usado em: sistema/tasks/06-virtualizacao-containers.yaml
 servicos_virt:
-  - libvirtd.service
+  - libvirtd.socket
   - docker.service
 
 # Extensões GNOME a serem instaladas via gext
@@ -229,4 +252,7 @@ extensoes_gnome:
 pcloud_dir: "{{ ansible_env.HOME }}/.local/share/pcloud"
 pcloud_bin_dir: "{{ ansible_env.HOME }}/.local/bin"
 pcloud_desktop_dir: "{{ ansible_env.HOME }}/.local/share/applications"
+
+# Código público da API do pCloud (usado exclusivamente para consultar a URL de download direto do AppImage)
+# Este é um token público de link de download oficial da pCloud, portanto é seguro e esperado estar versionado no projeto.
 pcloud_api_code: "XZopbc5ZpqOBs9mkVRk4zDHD7TjDJpQBcfzk"
