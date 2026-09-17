@@ -40,20 +40,3 @@
     executable: /bin/bash
   when: not java_sdk_stat.stat.exists
   become: false
-
-- name: Verifica se a versão do Maven já está instalada no SDKMAN
-  ansible.builtin.stat:
-    path: "{{ ansible_env.HOME }}/.sdkman/candidates/maven/{{ versao_maven }}"
-  register: maven_sdk_stat
-  become: false
-
-- name: Instala e define como padrão o Maven via SDKMAN
-  ansible.builtin.shell: |
-    export SDKMAN_DIR="{{ ansible_env.HOME }}/.sdkman"
-    [[ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]] && source "$SDKMAN_DIR/bin/sdkman-init.sh"
-    sdk install maven {{ versao_maven }} || true
-    sdk default maven {{ versao_maven }}
-  args:
-    executable: /bin/bash
-  when: not maven_sdk_stat.stat.exists
-  become: false
