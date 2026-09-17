@@ -23,6 +23,8 @@
     state: present
   become: false
 
+
+
 - name: Configura limpeza automática da pasta Downloads
   ansible.builtin.cron:
     name: "Limpeza automática de arquivos antigos em Downloads"
