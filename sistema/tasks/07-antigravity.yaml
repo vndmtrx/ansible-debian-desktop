@@ -59,6 +59,12 @@
           - --strip-components=1
         remote_src: true
 
+    - name: Copia ícone oficial do Antigravity Standalone
+      ansible.builtin.copy:
+        src: antigravity/antigravity-black.svg
+        dest: "{{ antigravity_dir }}/standalone/antigravity-black.svg"
+        mode: '0644'
+
     - name: Cria link simbólico para antigravity no PATH
       ansible.builtin.shell: |
         for bin in antigravity Antigravity; do
@@ -77,6 +83,7 @@
           Name=Antigravity
           Comment=Google Antigravity Standalone
           Exec=antigravity %U
+          Icon={{ antigravity_dir }}/standalone/antigravity-black.svg
           Terminal=false
           Type=Application
           Categories=Development;Utility;
@@ -112,6 +119,12 @@
           - --strip-components=1
         remote_src: true
 
+    - name: Copia ícone oficial do Antigravity IDE
+      ansible.builtin.copy:
+        src: antigravity/antigravity-ide-color.svg
+        dest: "{{ antigravity_dir }}/ide/antigravity-ide-color.svg"
+        mode: '0644'
+
     - name: Cria link simbólico para antigravity-ide no PATH
       ansible.builtin.shell: |
         for bin in antigravity-ide antigravity Antigravity; do
@@ -130,7 +143,7 @@
           Name=Antigravity IDE
           Comment=Google Antigravity IDE
           Exec=antigravity-ide %U
-          Icon={{ antigravity_dir }}/ide/resources/app/resources/linux/code.png
+          Icon={{ antigravity_dir }}/ide/antigravity-ide-color.svg
           Terminal=false
           Type=Application
           Categories=Development;IDE;
