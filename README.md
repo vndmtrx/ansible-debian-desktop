@@ -20,6 +20,11 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
 - **Firewall & SSH:** Firewall UFW ativo com regras para OpenSSH e interface gráfica (`gufw`).
 - **Terminal & CLI Moderna:**
   - `eza` (substituto moderno do `ls` com suporte a git e ícones)
+  - `bat` / `batcat` (visualizador de arquivos moderno com syntax highlighting e paginação)
+  - `fd-find` / `fdfind` (busca ultrarrápida de arquivos e diretórios)
+  - `du-dust` / `dust` (análise gráfica e intuitiva de uso de disco)
+  - `procs` (visualizador moderno de processos com filtros e cores)
+  - `duf` (painel moderno e colorido de monitoramento de sistemas de arquivos)
   - `btop` e `glances` (monitores avançados de hardware e processos)
   - `fzf` (fuzzy finder interativo de terminal)
   - `tailspin` (`tspin` nativo do Debian para colorização inteligente de logs)
@@ -131,13 +136,37 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
 
 ## 💻 Como Usar
 
-### 1. Clonar o repositório
+### 📋 Passo a Passo no Notebook Físico (Recém-Formatado)
+
+Após realizar a instalação limpa do Debian 13 e o primeiro login:
+
 ```bash
+# 1. Instalar o Git e clonar o repositório
+sudo apt update && sudo apt install -y git
+mkdir -p ~/du/dev/github
+cd ~/du/dev/github
 git clone https://github.com/vndmtrx/ansible-debian-desktop.git
 cd ansible-debian-desktop
+
+# 2. Copiar os instaladores do Antigravity para ~/Downloads (se aplicável)
+# Coloque 'Antigravity.tar.gz' e 'Antigravity IDE.tar.gz' na pasta ~/Downloads/
+
+# 3. (Opcional) Restaurar chaves SSH, GPG e dotfiles do backup anterior
+./restore.sh
+
+# 4. Executar o provisionamento completo do sistema
+./bootstrap.sh
+
+# 5. Reiniciar para carregar todos os runtimes e sessão gráfica
+sudo reboot
 ```
 
-### 2. Executar o bootstrap
+---
+
+### ⚙️ Execução Padrão e Bootstrap Local
+
+Para executar o bootstrap em uma máquina que já possui o repositório:
+
 ```bash
 chmod +x bootstrap.sh
 ./bootstrap.sh
@@ -145,8 +174,8 @@ chmod +x bootstrap.sh
 
 O script irá:
 1. Configurar o `$PATH` para `~/.local/bin`.
-2. Instalar `pipx` e `ansible` se necessário.
-3. Exibir o **Relatório do Sistema** com a checagem de runtimes e status do Antigravity.
+2. Instalar `pipx` e `ansible` de forma isolada.
+3. Exibir o **Relatório do Sistema** com o status do Antigravity e verificação de versões upstream (Java, Maven, Erlang, Elixir).
 4. Executar o playbook solicitando a senha de `sudo` apenas uma vez.
 
 ### 3. Execução Seletiva via Tags
@@ -175,6 +204,82 @@ Você pode repassar argumentos e tags diretamente pelo `./bootstrap.sh` (ou via 
 # Executar tudo, exceto virtualização
 ./bootstrap.sh --skip-tags virt
 ```
+
+---
+
+## 🧪 Testbed Automatizado em VM KVM / Libvirt (`testbed/` & `test-e2e-vm.sh`)
+
+Ambiente de teste 100% isolado e repetível para simular a instalação limpa do Debian 13 em uma máquina virtual KVM com aceleração por hardware, validação de baixo nível (Day-0/Day-1) e provisionamento completo com Ansible (Day-2).
+
+### 📋 Passo a Passo do Testbed
+
+```
+┌─────────────────────────────────────────┐
+│ 1. [HOST] Preparar arquivos em testbed/ │
+└────────────────────┬────────────────────┘
+                     ▼
+┌─────────────────────────────────────────┐
+│ 2. [HOST] Executar setup-testbed-vm.sh  │
+└────────────────────┬────────────────────┘
+                     ▼
+┌─────────────────────────────────────────┐
+│ 3. [VM]   Instalar Debian 13 (Calamares)│
+└────────────────────┬────────────────────┘
+                     ▼
+┌─────────────────────────────────────────┐
+│ 4. [VM]   Subir OpenSSH Server & Chaves │
+└────────────────────┬────────────────────┘
+                     ▼
+┌─────────────────────────────────────────┐
+│ 5. [HOST] Executar test-e2e-vm.sh       │
+│    (Snapshot, Day-0/1, Reboot, Ansible) │
+└─────────────────────────────────────────┘
+```
+
+#### Passo 1: Preparar arquivos no Host (Opcional)
+Você pode colocar os instaladores do Antigravity e a ISO do Debian na pasta `testbed/` (ignorada no git):
+```bash
+# Estrutura esperada em testbed/
+testbed/
+├── debian-live.iso            # ISO do Debian 13 Live GNOME (opcional, baixada automaticamente se ausente)
+├── Antigravity.tar.gz         # Instalador do Antigravity Standalone (opcional)
+└── Antigravity IDE.tar.gz     # Instalador do Antigravity IDE (opcional)
+```
+
+#### Passo 2: Criar e Inicializar a VM no Host
+Execute o script de criação da máquina virtual:
+```bash
+./setup-testbed-vm.sh
+```
+* Cria a VM `debian-testbed` com 100GB de disco (`qcow2`), 8GB de RAM, 2 vCPUs e UEFI.
+* Abre automaticamente o instalador gráfico da ISO.
+
+#### Passo 3: Instalar o Debian na VM
+No console gráfico da VM (`virt-manager` ou `virt-viewer`):
+1. Abra o instalador **Calamares**.
+2. Na tela de particionamento, selecione **"Apagar disco"** (criptografia LUKS opcional).
+3. Defina seu nome de usuário e senha.
+4. Conclua a instalação e reinicie a VM, fazendo o primeiro login na interface gráfica.
+
+#### Passo 4: Subir o SSH Server na VM
+No terminal da VM recém-instalada, execute o comando de inicialização do SSH:
+```bash
+sudo apt update && sudo apt install -y openssh-server && sudo ssh-keygen -A && sudo systemctl enable --now ssh
+```
+
+#### Passo 5: Executar a Automação End-to-End no Host
+No terminal do seu Host, execute o orquestrador:
+```bash
+./test-e2e-vm.sh
+```
+
+O script realizará de forma 100% autônoma:
+1. **Snapshot `base-clean`:** Cria o snapshot do estado limpo inicial (ou reverte para ele caso já exista, permitindo repetir o teste instantaneamente sem reinstalar).
+2. **Conexão Segura:** Injeta sua chave SSH no usuário da VM via `sshpass` e sincroniza o relógio com o host.
+3. **Calibrações de Baixo Nível (Day-0/Day-1):** Detecta disco/LUKS dinamicamente, calibra o Slot 0 em 500ms, configura `zram-tools`, expande a partição raiz a quente e ajusta GRUB/initramfs.
+4. **Reboot:** Reinicia a VM para inicializar o kernel e initramfs otimizados.
+5. **Espelhamento:** Transfere o repositório atual e os compactados do Antigravity para a VM.
+6. **Provisionamento Ansible (Day-2):** Executa o `./bootstrap.sh` completo na VM.
 
 ---
 
@@ -262,11 +367,54 @@ Alinhado às melhores práticas do Ansible (níveis de precedência):
 | :--- | :--- | :--- |
 | `atualiza_sistema` | Executa `apt upgrade` completo do sistema | `false` |
 | `versao_java` | Identificador do Java no SDKMAN! | `'26-tem'` |
-| `versao_maven` | Versão do Apache Maven no SDKMAN! | `'3.9.16'` |
 | `versao_erlang` | Versão do Erlang/OTP compilada via ASDF | `'29.0.6'` |
 | `versao_elixir` | Versão do Elixir instalada via ASDF | `'1.20.4-otp-29'` |
 | `versao_asdf` | Versão do binário ASDF (Go) | `'v0.20.0'` |
 | `extensoes_gnome` | Lista de extensões GNOME a instalar | *(12 extensões)* |
+
+---
+
+## 🧰 Guia de Utilitários CLI Modernos (Terminal)
+
+O playbook instala um conjunto completo de utilitários CLI modernos escritos principalmente em **Rust** e **Go**, que substituem comandos tradicionais do Unix por versões mais rápidas, coloridas e informativas:
+
+| Ferramenta | Comando no Debian | Substitui | Destaques / Principais Recursos |
+| :--- | :--- | :--- | :--- |
+| **`eza`** | `eza` | `ls` | Listagem com cores semânticas, suporte a status Git (`--git`), árvore de diretórios (`-T`) e ícones. |
+| **`bat`** | `batcat` | `cat` | Visualizador com *syntax highlighting* para mais de 100 linguagens, paginação automática e integração Git. |
+| **`fd-find`** | `fdfind` | `find` | Busca recursiva ultrarrápida, respeita o `.gitignore` por padrão e suporta regex e cores. |
+| **`du-dust`** | `dust` | `du` | Visualização gráfica em árvore de barras horizontais do consumo de disco em pastas. |
+| **`duf`** | `duf` | `df` | Painel colorido e organizado de sistemas de arquivos, partições montadas e dispositivos de bloco. |
+| **`procs`** | `procs` | `ps` | Visualizador moderno de processos com identificação por cores, portas TCP/UDP abertas e visualização em árvore. |
+| **`tailspin`** | `tspin` | `tail -f` / `less` | Colorizador e destacador de sintaxe inteligente para logs em tempo real (datas, IPs, URLs, UUIDs, erros). |
+| **`btop`** | `btop` | `top` / `htop` | Monitor visual de recursos (CPU, memória, discos, rede e processos) com gráficos responsivos. |
+| **`glances`** | `glances` | `top` | Monitor de recursos do sistema em modo terminal, cliente/servidor ou web. |
+| **`gdu`** | `gdu` | `ncdu` | Analisador interativo de uso de disco de alta velocidade com navegação por teclado. |
+| **`fzf`** | `fzf` | - | *Fuzzy finder* interativo de linha de comando para filtragem rápida de arquivos, comandos e pipes. |
+
+---
+
+## 💻 Aliases e Atalhos do Shell (`~/.bashrc`)
+
+O provisionamento injeta atalhos no `~/.bashrc` (parametrizados em [`sistema/defaults/main.yaml`](sistema/defaults/main.yaml)) para agilidade e produtividade no terminal:
+
+| Alias | Comando Expandido | Descrição / Finalidade |
+| :--- | :--- | :--- |
+| `ip` | `ip --color=auto` | Versão colorida do comando de rede |
+| `ls` | `eza --color=auto` | Versão colorida e moderna do `ls` via `eza` |
+| `grep` | `grep --color=auto` | Versão colorida do `grep` |
+| `ll` | `ls -lah` | Listagem detalhada incluindo arquivos ocultos |
+| `eza` | `eza --color=auto` | Atalho explícito para o `eza` com cores |
+| `ts` | `tspin` | Visualizador de logs com highlight automático de sintaxe (`tailspin`) |
+| `vg` | `vagrant` | Atalho rápido para gerenciar máquinas virtuais com o Vagrant |
+| `jc` | `sudo journalctl -f \| tspin` | Acompanha logs do systemd (`journalctl -f`) colorizados em tempo real |
+| `mtr` | `mtr -t` | Diagnóstico interativo de latência/perda de pacotes em modo texto |
+| `rebootbios` | `sudo systemctl reboot --firmware` | Reinicia a máquina diretamente no setup da BIOS/UEFI |
+| `tensor` | `docker run -it --rm -p 8888:8888 -v $HOME/du/dev/tensor:/tf/notebooks tensorflow/tensorflow:latest-jupyter` | Sobe ambiente interativo do TensorFlow/Jupyter com `--rm` na porta 8888 |
+| `plantuml` | `docker run -it --rm -p 8080:8080 plantuml/plantuml-server:jetty` | Sobe servidor local Jetty do PlantUML na porta 8080 (`--rm`) |
+| `salvar-extensoes` | `$HOME/.local/bin/salvar-extensoes` | Exporta as preferências ativas do dconf e extensões para `~/du/conf/` |
+| `backup-seguranca` | `$HOME/.local/bin/backup-seguranca` | Gera backup comprimido e criptografado com GPG de dotfiles e chaves |
+| `restore-seguranca` | `$HOME/.local/bin/restore-seguranca` | Restaura backups criptografados no `$HOME` com validação de integridade |
 
 ---
 
