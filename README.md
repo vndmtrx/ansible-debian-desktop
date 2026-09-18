@@ -148,16 +148,20 @@ cd ~/du/dev/github
 git clone https://github.com/vndmtrx/ansible-debian-desktop.git
 cd ansible-debian-desktop
 
-# 2. Copiar os instaladores do Antigravity para ~/Downloads (se aplicável)
+# 2. Executar as otimizações de baixo nível de Day-0 / Day-1 (LUKS, ZRAM, boot e partição)
+# O script realiza a calibração de chaves, expande a partição raiz para 100% e reinicia
+sudo ./setup-day0.sh
+
+# 3. Após o reboot, copiar os instaladores do Antigravity para ~/Downloads (se aplicável)
 # Coloque 'Antigravity.tar.gz' e 'Antigravity IDE.tar.gz' na pasta ~/Downloads/
 
-# 3. (Opcional) Restaurar chaves SSH, GPG e dotfiles do backup anterior
+# 4. (Opcional) Restaurar chaves SSH, GPG e dotfiles do backup anterior
 ./restore.sh
 
-# 4. Executar o provisionamento completo do sistema
+# 5. Executar o provisionamento completo do sistema
 ./bootstrap.sh
 
-# 5. Reiniciar para carregar todos os runtimes e sessão gráfica
+# 6. Reiniciar para carregar todos os runtimes e sessão gráfica
 sudo reboot
 ```
 
