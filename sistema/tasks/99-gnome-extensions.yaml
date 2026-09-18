@@ -81,3 +81,17 @@
       when: dconf_template_res.changed
       become: false
       changed_when: true
+
+    - name: Carrega e habilita extensões GNOME na sessão gráfica ativa via D-Bus
+      ansible.builtin.shell: |
+        for ext in "{{ ansible_env.HOME }}/.local/share/gnome-shell/extensions/"/*/; do
+          if [ -d "$ext" ]; then
+            uuid=$(basename "$ext")
+            gnome-extensions enable "$uuid" 2>/dev/null || true
+          fi
+        done
+      environment:
+        DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_user_uid }}/bus"
+      failed_when: false
+      changed_when: false
+      become: false
