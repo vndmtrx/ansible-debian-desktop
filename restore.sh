@@ -233,10 +233,19 @@ if [[ -d "${STAGE_DIR}/keyrings" ]]; then
     echo -e "    ${GREEN}✔${RESET} Chaveiros do GNOME Keyring restaurados com sucesso."
 fi
 
-# Restaura preferências dconf do GNOME
+# Restaura preferências dconf do GNOME de forma cirúrgica e segura
 if [[ -d "${STAGE_DIR}/gnome" ]] && command -v dconf &>/dev/null; then
-    if [[ -f "${STAGE_DIR}/gnome/extensoes_shell.dconf" ]]; then
-        dconf load /org/gnome/shell/ < "${STAGE_DIR}/gnome/extensoes_shell.dconf" 2>/dev/null || true
+    if [[ -f "${STAGE_DIR}/gnome/extensoes.dconf" ]]; then
+        dconf load /org/gnome/shell/extensions/ < "${STAGE_DIR}/gnome/extensoes.dconf" 2>/dev/null || true
+    elif [[ -f "${STAGE_DIR}/gnome/extensoes_shell.dconf" ]]; then
+        # Compatibilidade com backups legados
+        dconf load /org/gnome/shell/extensions/ < "${STAGE_DIR}/gnome/extensoes_shell.dconf" 2>/dev/null || true
+    fi
+    if [[ -f "${STAGE_DIR}/gnome/background.dconf" ]]; then
+        dconf load /org/gnome/desktop/background/ < "${STAGE_DIR}/gnome/background.dconf" 2>/dev/null || true
+    fi
+    if [[ -f "${STAGE_DIR}/gnome/interface.dconf" ]]; then
+        dconf load /org/gnome/desktop/interface/ < "${STAGE_DIR}/gnome/interface.dconf" 2>/dev/null || true
     fi
     if [[ -f "${STAGE_DIR}/gnome/gerenciador_janelas.dconf" ]]; then
         dconf load /org/gnome/desktop/wm/ < "${STAGE_DIR}/gnome/gerenciador_janelas.dconf" 2>/dev/null || true
@@ -247,16 +256,7 @@ if [[ -d "${STAGE_DIR}/gnome" ]] && command -v dconf &>/dev/null; then
     if [[ -f "${STAGE_DIR}/gnome/atalhos_customizados.dconf" ]]; then
         dconf load /org/gnome/settings-daemon/plugins/media-keys/ < "${STAGE_DIR}/gnome/atalhos_customizados.dconf" 2>/dev/null || true
     fi
-    if [[ -f "${STAGE_DIR}/gnome/interface.dconf" ]]; then
-        dconf load /org/gnome/desktop/interface/ < "${STAGE_DIR}/gnome/interface.dconf" 2>/dev/null || true
-    fi
-    if [[ -f "${STAGE_DIR}/gnome/calendar.dconf" ]]; then
-        dconf load /org/gnome/desktop/calendar/ < "${STAGE_DIR}/gnome/calendar.dconf" 2>/dev/null || true
-    fi
-    if [[ -f "${STAGE_DIR}/gnome/session.dconf" ]]; then
-        dconf load /org/gnome/desktop/session/ < "${STAGE_DIR}/gnome/session.dconf" 2>/dev/null || true
-    fi
-    echo -e "    ${GREEN}✔${RESET} Preferências e atalhos do GNOME carregados via dconf."
+    echo -e "    ${GREEN}✔${RESET} Preferências e extensões do GNOME carregadas cirurgicamente via dconf."
 fi
 
 echo ""
