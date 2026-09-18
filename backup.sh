@@ -169,14 +169,13 @@ if [[ -d "${HOME}/.local/share/keyrings" ]]; then
 fi
 
 if command -v dconf &>/dev/null; then
-    # Dumps pontuais e granulares
-    dconf dump /org/gnome/shell/ > "${STAGE_DIR}/gnome/extensoes_shell.dconf"
+    # Dumps pontuais e cirúrgicos (idênticos à granularidade do Ansible)
+    dconf dump /org/gnome/shell/extensions/ > "${STAGE_DIR}/gnome/extensoes.dconf"
+    dconf dump /org/gnome/desktop/background/ > "${STAGE_DIR}/gnome/background.dconf"
+    dconf dump /org/gnome/desktop/interface/ > "${STAGE_DIR}/gnome/interface.dconf"
     dconf dump /org/gnome/desktop/wm/ > "${STAGE_DIR}/gnome/gerenciador_janelas.dconf"
     dconf dump /org/gnome/mutter/ > "${STAGE_DIR}/gnome/mutter.dconf"
     dconf dump /org/gnome/settings-daemon/plugins/media-keys/ > "${STAGE_DIR}/gnome/atalhos_customizados.dconf"
-    dconf dump /org/gnome/desktop/interface/ > "${STAGE_DIR}/gnome/interface.dconf"
-    dconf dump /org/gnome/desktop/calendar/ > "${STAGE_DIR}/gnome/calendar.dconf"
-    dconf dump /org/gnome/desktop/session/ > "${STAGE_DIR}/gnome/session.dconf"
     echo -e "    ${GREEN}✔${RESET} Dumps cirúrgicos de dconf gerados (extensões, atalhos, barra e janelas)"
 else
     echo -e "    ${DIM}Utilitário dconf não encontrado.${RESET}"
