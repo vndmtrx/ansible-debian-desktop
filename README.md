@@ -287,57 +287,43 @@ O script realizará de forma 100% autônoma:
 
 ---
 
-## 🚀 Day-0 / Day-1: Preparação de Mídia com Ventoy (`setup-ventoy.sh`)
+## 🚀 Day-0 / Day-1: Otimizações de Baixo Nível (`setup-day0.sh`)
 
-Para preparar a mídia de instalação com o repositório Ansible e backups de segurança, utilize o script [`setup-ventoy.sh`](setup-ventoy.sh):
-
-```bash
-# Com o pendrive Ventoy plugado no computador:
-chmod +x setup-ventoy.sh
-./setup-ventoy.sh
-```
-
-O script:
-1. Monta a partição de dados do Ventoy de forma idempotente.
-2. Clona/atualiza o repositório Ansible para o pendrive.
-3. Sincroniza backups criptografados de `~/du/backups/` para `/backup/` no pendrive.
-
-```text
-/mnt/ventoy/
-├── debian-live-13.7.0-amd64-gnome.iso
-├── backup/                              <-- Backups cifrados (.tar.bz2.gpg)
-└── scripts/
-    └── ansible-debian-desktop/          <-- Clone local do repositório
-```
-
-### 🖥️ Fluxo de Instalação
-
-1. **Boot pelo Ventoy:** Selecione a ISO do Debian Live GNOME no menu do Ventoy.
-2. **Instalação Gráfica padrão:** Execute o Calamares normalmente. Na tela de partição, marque **"Apagar disco"** e **"Criptografar sistema"**.
-3. **Primeiro Boot — Otimizações de baixo nível e Provisionamento:** Ao reiniciar no SSD recém-instalado, monte o pendrive, copie o repositório e execute as calibrações de baixo nível conforme a colinha do [artigo de otimização de boot LUKS](https://vndmtrx.github.io/posts/otimizacao-boot-luks/#colinha-rapida-para-a-proxima-formatacao):
+Após realizar a instalação limpa do Debian 13 e antes de rodar o Ansible, execute o script de calibração pós-instalação [`setup-day0.sh`](setup-day0.sh):
 
 ```bash
-# 1. Copiar repositório do pendrive
-mkdir -p ~/du/dev/github
-cp -r /media/$USER/Ventoy/scripts/ansible-debian-desktop ~/du/dev/github/
-
-# 2. Copiar backups (se existirem)
-mkdir -p ~/du/backups
-cp -p /media/$USER/Ventoy/backup/* ~/du/backups/ 2>/dev/null || true
-
-# 3. Executar as calibrações de Day-0 manualmente (conforme a colinha do post de LUKS):
-# - Slot 0 com PBKDF2 em 500ms
-# - Injeção das flags no crypttab (discard,no-read-workqueue,no-write-workqueue)
-# - Expurgo do swap no fstab, crypttab e grub (RESUME=none e update-initramfs)
-# - Instalação do zram-tools
-# - Redimensionamento da partição raiz a quente (parted rm, resizepart, cryptsetup resize, resize2fs)
-# - Otimização de userspace (mask plymouth-quit-wait e disable NetworkManager-wait-online)
-
-# 4. Opcional: restaurar chaves SSH, GPG, chaveiro GNOME e atalhos
 cd ~/du/dev/github/ansible-debian-desktop
+sudo ./setup-day0.sh
+```
+
+O script automatiza com segurança:
+1. **Detecção Dinâmica:** Identifica a topologia de armazenamento (LUKS com mapper, partição direta e sistema de arquivos).
+2. **Desativação de Swap em Disco:** Configura `RESUME=none`, desativa containers de swap e limpa `/etc/fstab` e `/etc/crypttab`.
+3. **Calibração LUKS (PBKDF2 500ms):** Recalibra o Keyslot 0 com iter-time de 500ms e injeta flags de alto desempenho (`discard,no-read-workqueue,no-write-workqueue`) no `/etc/crypttab`.
+4. **Swap em RAM (zram):** Instala e ativa o `zram-tools` (`/dev/zram0`).
+5. **Expansão Online da Partição Raiz:** Remove a partição legada de swap e expande a partição raiz para 100% do disco a quente.
+6. **Ajuste de GRUB e Initramfs:** Remove `splash` e `resume=`, reduz o timeout do GRUB para 1s, mascara `plymouth-quit-wait.service` e executa `update-initramfs -u -k all`.
+
+### 🖥️ Fluxo de Instalação e Primeiro Boot
+
+1. **Instalação Gráfica padrão:** Execute o Calamares normalmente na mídia de instalação (pendrive/Live). Na tela de partição, marque **"Apagar disco"** e **"Criptografar sistema"**.
+2. **Primeiro Boot — Otimizações e Provisionamento:** Ao reiniciar no SSD recém-instalado:
+
+```bash
+# 1. Clonar o repositório
+sudo apt update && sudo apt install -y git
+mkdir -p ~/du/dev/github
+cd ~/du/dev/github
+git clone https://github.com/vndmtrx/ansible-debian-desktop.git
+cd ansible-debian-desktop
+
+# 2. Executar as otimizações de Day-0 / Day-1 e reiniciar
+sudo ./setup-day0.sh
+
+# 3. (Opcional) Restaurar chaves SSH, GPG, chaveiro GNOME e dotfiles
 ./restore.sh
 
-# 5. Disparar o provisionamento completo do ambiente
+# 4. Disparar o provisionamento completo do ambiente (Ansible Day-2)
 ./bootstrap.sh
 ```
 
