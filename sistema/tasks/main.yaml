@@ -37,12 +37,11 @@
     - runtimes
     - dev
 
-- name: Importar configurações do SDKMAN (Java e Maven)
+- name: Importar configurações do SDKMAN (Java)
   ansible.builtin.import_tasks: 05-sdkman.yaml
   tags:
     - sdkman
     - java
-    - maven
     - runtimes
     - dev
 
