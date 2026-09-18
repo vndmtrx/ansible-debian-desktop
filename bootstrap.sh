@@ -18,8 +18,9 @@ fi
 # 3. Atualiza repositórios e instala pré-requisitos (pipx)
 if ! command -v pipx &>/dev/null; then
     echo "Instalando pipx..."
-    sudo apt-get update
-    sudo apt-get install -y pipx
+    sudo systemctl stop packagekit 2>/dev/null || true
+    sudo apt-get -o DPkg::Lock::Timeout=120 update
+    sudo apt-get -o DPkg::Lock::Timeout=120 install -y pipx
 fi
 
 # 4. Instala Ansible via pipx com os binários completos
@@ -187,28 +188,6 @@ check_runtimes_report() {
 
     check_runtime_component "Java" "$installed_java" "$conf_java" "$latest_java"
 
-    # Maven
-    local installed_maven=""
-    if [[ -d "$HOME/.sdkman/candidates/maven" ]]; then
-        if [[ -L "$HOME/.sdkman/candidates/maven/current" ]]; then
-            installed_maven=$(basename "$(readlink -f "$HOME/.sdkman/candidates/maven/current")")
-        else
-            installed_maven=$(ls -1 "$HOME/.sdkman/candidates/maven" 2>/dev/null | grep -v 'current' | head -n 1 || true)
-        fi
-    fi
-    if [[ -z "$installed_maven" ]] && command -v mvn &>/dev/null; then
-        installed_maven=$(mvn -version 2>&1 | head -n 1 | awk '{print $3}' || true)
-    fi
-    [[ -z "$installed_maven" ]] && installed_maven="Não instalado"
-
-    local conf_maven
-    conf_maven=$(get_conf_var "versao_maven")
-    [[ -z "$conf_maven" ]] && conf_maven=$(get_conf_var "maven_sdkman")
-    local latest_maven
-    latest_maven=$(curl -sL --max-time 2 "https://api.sdkman.io/2/candidates/default/maven" 2>/dev/null || true)
-
-    check_runtime_component "Maven" "$installed_maven" "$conf_maven" "$latest_maven"
-
     # Erlang
     local installed_erlang=""
     if [[ -f "$HOME/.tool-versions" ]]; then
@@ -270,7 +249,12 @@ echo -e "\n${BOLD}==============================================================
 echo -e "${BOLD}Executando playbook...${RESET}"
 START_TIME=$(date +%s)
 
-ansible-playbook playbook.yaml --ask-become-pass "$@"
+# Se senha de become já foi passada via argumentos (-e ansible_become_password=... ou --extra-vars), não solicita interativamente
+if [[ "$*" == *"ansible_become_password"* || "$*" == *"ansible_sudo_pass"* ]]; then
+    ansible-playbook playbook.yaml "$@"
+else
+    ansible-playbook playbook.yaml --ask-become-pass "$@"
+fi
 
 END_TIME=$(date +%s)
 ELAPSED=$((END_TIME - START_TIME))
