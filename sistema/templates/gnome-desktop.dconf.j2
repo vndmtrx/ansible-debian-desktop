@@ -1,10 +1,14 @@
 # Configurações do GNOME Desktop (Janelas, Teclas de Atalho, Extensões e Wallpaper)
-# Gerado via dconf
+# Gerado e sincronizado a partir do dconf da máquina principal
 
 [org/gnome/desktop/background]
 picture-options='zoom'
 picture-uri='file://{{ ansible_env.HOME }}/.local/share/backgrounds/bliss.jpg'
 picture-uri-dark='file://{{ ansible_env.HOME }}/.local/share/backgrounds/bliss.jpg'
+
+[org/gnome/desktop/interface]
+clock-show-weekday=true
+color-scheme='prefer-dark'
 
 [org/gnome/desktop/wm/preferences]
 button-layout='appmenu:minimize,maximize,close'
@@ -19,7 +23,13 @@ switch-windows-backward=['<Shift><Alt>Tab']
 unmaximize=['<Super>Down', '<Alt>F5']
 
 [org/gnome/shell]
-enabled-extensions=['burn-my-windows@schneegans.github.com', 'caffeine@patapon.info', 'clipboard-indicator@tudmotu.com', 'no-overview@fthx', 'tilingshell@ferrarodomenico.com', 'windowIsReady_Remover@nunofarruca@gmail.com', 'dash-to-panel@jderose9.github.com', 'appindicatorsupport@rgcjonas.gmail.com', 'blur-my-shell@aunetx', 'custom-hot-corners-extended@G-dH.github.com', 'WallpaperSwitcher@Rishu', 'flypie@schneegans.github.com']
+command-history=['lg']
+disabled-extensions=['dash-to-dock@micxgx.gmail.com', 'multi-monitors-bar@frederykabryan']
+enabled-extensions=['caffeine@patapon.info', 'clipboard-indicator@tudmotu.com', 'no-overview@fthx', 'tilingshell@ferrarodomenico.com', 'windowIsReady_Remover@nunofarruca@gmail.com', 'dash-to-panel@jderose9.github.com', 'burn-my-windows@schneegans.github.com']
+favorite-apps=['librewolf.desktop', 'vivaldi-stable.desktop', 'firefox-esr.desktop', 'com.gexperts.Tilix.desktop', 'org.gnome.Nautilus.desktop', 'codium.desktop', 'antigravity-ide.desktop', 'antigravity-standalone.desktop', 'dev.deedles.Trayscale.desktop']
+last-selected-power-profile='performance'
+remember-mount-password=false
+welcome-dialog-last-shown-version='48.7'
 
 [org/gnome/shell/extensions/burn-my-windows]
 active-profile='{{ ansible_env.HOME }}/.config/burn-my-windows/profiles/transicoes.conf'
@@ -51,11 +61,11 @@ hotkeys-overlay-combo='TEMPORARILY'
 isolate-monitors=true
 isolate-workspaces=true
 overview-click-to-exit=true
-panel-anchors='{"BOE-0x00000000":"MIDDLE","ACR-83480DBF94229":"MIDDLE"}'
-panel-element-positions='{"BOE-0x00000000":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":true,"position":"stackedTL"},{"element":"rightBox","visible":true,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"centerMonitor"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}],"ACR-83480DBF94229":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":true,"position":"stackedTL"},{"element":"rightBox","visible":true,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"centered"},{"element":"centerBox","visible":false,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}]}'
-panel-lengths='{"BOE-0x00000000":100,"ACR-83480DBF94229":100}'
+panel-anchors='{"0":"MIDDLE","BOE-0x00000000":"MIDDLE","ACR-83480DBF94229":"MIDDLE"}'
+panel-element-positions='{"0":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":true,"position":"stackedTL"},{"element":"rightBox","visible":true,"position":"stackedTL"},{"element":"leftBox","visible":false,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"centerMonitor"},{"element":"centerBox","visible":false,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}],"BOE-0x00000000":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":true,"position":"stackedTL"},{"element":"rightBox","visible":true,"position":"stackedTL"},{"element":"leftBox","visible":false,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"centerMonitor"},{"element":"centerBox","visible":false,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}],"ACR-83480DBF94229":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":true,"position":"stackedTL"},{"element":"rightBox","visible":true,"position":"stackedTL"},{"element":"leftBox","visible":false,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"centerMonitor"},{"element":"centerBox","visible":false,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}]}'
+panel-lengths='{"0":100,"BOE-0x00000000":100,"ACR-83480DBF94229":100}'
 panel-positions='{}'
-panel-sizes='{"BOE-0x00000000":48,"ACR-83480DBF94229":48}'
+panel-sizes='{"0":48,"BOE-0x00000000":48,"ACR-83480DBF94229":48}'
 prefs-opened=false
 show-apps-icon-file=''
 show-showdesktop-delay=1000
@@ -79,12 +89,15 @@ window-preview-hide-immediate-click=true
 window-preview-size=240
 window-preview-title-position='TOP'
 
+[org/gnome/shell/extensions/multi-monitors-add-on]
+available-indicators=@as []
+
 [org/gnome/shell/extensions/tilingshell]
 edge-tiling-mode='default'
 inner-gaps=uint32 2
 last-version-name-installed='17.3'
 layouts-json='[{"id":"Layout 1","tiles":[{"x":0,"y":0,"width":0.22,"height":0.5,"groups":[1,2]},{"x":0,"y":0.5,"width":0.22,"height":0.5,"groups":[1,2]},{"x":0.22,"y":0,"width":0.56,"height":1,"groups":[2,3]},{"x":0.78,"y":0,"width":0.22,"height":0.5,"groups":[3,4]},{"x":0.78,"y":0.5,"width":0.22,"height":0.5,"groups":[3,4]}]},{"id":"Layout 2","tiles":[{"x":0,"y":0,"width":0.22,"height":1,"groups":[1]},{"x":0.22,"y":0,"width":0.56,"height":1,"groups":[1,2]},{"x":0.78,"y":0,"width":0.22,"height":1,"groups":[2]}]},{"id":"Layout 3","tiles":[{"x":0,"y":0,"width":0.33,"height":1,"groups":[1]},{"x":0.33,"y":0,"width":0.67,"height":1,"groups":[1]}]},{"id":"Layout 4","tiles":[{"x":0,"y":0,"width":0.67,"height":1,"groups":[1]},{"x":0.67,"y":0,"width":0.33,"height":1,"groups":[1]}]}]'
 outer-gaps=uint32 2
-overridden-settings='{}'
+overridden-settings="{\"org.gnome.mutter.keybindings\":{\"toggle-tiled-right\":\"['<Super>Right']\",\"toggle-tiled-left\":\"['<Super>Left']\"},\"org.gnome.desktop.wm.keybindings\":{\"maximize\":\"['<Super>Up']\",\"unmaximize\":\"['<Super>Down', '<Alt>F5']\"},\"org.gnome.mutter\":{\"edge-tiling\":\"true\"}}"
 selected-layouts=[['Layout 1', 'Layout 1'], ['Layout 1', 'Layout 1']]
 window-use-custom-border-color=false
