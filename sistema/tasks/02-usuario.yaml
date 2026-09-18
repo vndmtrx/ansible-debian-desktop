@@ -92,7 +92,7 @@
     dest: "{{ ansible_env.HOME }}/.local/bin/salvar-extensoes"
     content: |
       #!/usr/bin/env bash
-      # Salva as configurações das extensões e do desktop GNOME em ~/du/conf
+      # Salva as configurações das extensões e preferências do desktop GNOME em ~/du/conf
       set -euo pipefail
 
       DEST_DIR="$HOME/du/conf"
@@ -100,11 +100,16 @@
 
       mkdir -p "$DEST_DIR"
       dconf dump /org/gnome/shell/extensions/ > "$DEST_DIR/extensoes_${TIMESTAMP}.dconf"
-      dconf dump / > "$DEST_DIR/gnome_desktop_${TIMESTAMP}.dconf"
+      dconf dump /org/gnome/desktop/background/ > "$DEST_DIR/background_${TIMESTAMP}.dconf"
+      dconf dump /org/gnome/desktop/interface/ > "$DEST_DIR/interface_${TIMESTAMP}.dconf"
+      dconf dump /org/gnome/desktop/wm/ > "$DEST_DIR/janelas_${TIMESTAMP}.dconf"
+      dconf dump /org/gnome/mutter/ > "$DEST_DIR/mutter_${TIMESTAMP}.dconf"
+      dconf dump /org/gnome/settings-daemon/plugins/media-keys/ > "$DEST_DIR/atalhos_${TIMESTAMP}.dconf"
 
-      echo "✅ Configurações salvas com sucesso em $DEST_DIR:"
+      echo "✅ Configurações salvas cirurgicamente em $DEST_DIR:"
       echo "   📄 Extensões: extensoes_${TIMESTAMP}.dconf"
-      echo "   📄 Desktop Completo: gnome_desktop_${TIMESTAMP}.dconf"
+      echo "   📄 Janelas & Atalhos: janelas_${TIMESTAMP}.dconf / atalhos_${TIMESTAMP}.dconf"
+      echo "   📄 Interface & Tema: interface_${TIMESTAMP}.dconf / background_${TIMESTAMP}.dconf"
     mode: '0755'
   become: false
 
