@@ -65,15 +65,42 @@
         dest: "{{ antigravity_dir }}/standalone/antigravity-black.svg"
         mode: '0644'
 
-    - name: Cria link simbólico para antigravity no PATH
-      ansible.builtin.shell: |
-        for bin in antigravity Antigravity; do
-          if [ -f "{{ antigravity_dir }}/standalone/$bin" ]; then
-            ln -sf "{{ antigravity_dir }}/standalone/$bin" "{{ antigravity_bin_dir }}/antigravity"
-            break
-          fi
-        done
-      changed_when: false
+    - name: Remove arquivo compactado do Antigravity Standalone após instalação
+      ansible.builtin.file:
+        path: "{{ antigravity_download_dir }}/Antigravity.tar.gz"
+        state: absent
+
+- name: Configuração do lançador e atalho do Antigravity Standalone
+  when: antigravity_standalone_tar.stat.exists or antigravity_standalone_bin.stat.exists
+  become: false
+  block:
+    - name: Garante diretórios de binários e atalhos do usuário
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ antigravity_bin_dir }}"
+        - "{{ antigravity_desktop_dir }}"
+
+    - name: Remove link simbólico legado do Antigravity Standalone se existir
+      ansible.builtin.file:
+        path: "{{ antigravity_bin_dir }}/antigravity"
+        state: absent
+      when: antigravity_standalone_bin.stat.islnk is defined and antigravity_standalone_bin.stat.islnk
+
+    - name: Cria wrapper executável para antigravity no PATH
+      ansible.builtin.copy:
+        dest: "{{ antigravity_bin_dir }}/antigravity"
+        mode: '0755'
+        follow: false
+        content: |
+          #!/usr/bin/env bash
+          for bin in antigravity Antigravity; do
+            if [ -f "{{ antigravity_dir }}/standalone/$bin" ]; then
+              exec "{{ antigravity_dir }}/standalone/$bin" --password-store=basic "$@"
+            fi
+          done
 
     - name: Cria atalho desktop para Antigravity Standalone
       ansible.builtin.copy:
@@ -82,7 +109,7 @@
           [Desktop Entry]
           Name=Antigravity
           Comment=Google Antigravity Standalone
-          Exec=antigravity --password-store=basic %U
+          Exec=antigravity %U
           Icon={{ antigravity_dir }}/standalone/antigravity-black.svg
           Terminal=false
           Type=Application
@@ -91,11 +118,6 @@
           StartupNotify=false
           MimeType=x-scheme-handler/antigravity;
         mode: '0755'
-
-    - name: Remove arquivo compactado do Antigravity Standalone após instalação
-      ansible.builtin.file:
-        path: "{{ antigravity_download_dir }}/Antigravity.tar.gz"
-        state: absent
 
 - name: Instalação e Atualização do Antigravity IDE
   when: antigravity_ide_tar.stat.exists
@@ -125,15 +147,42 @@
         dest: "{{ antigravity_dir }}/ide/antigravity-ide-color.svg"
         mode: '0644'
 
-    - name: Cria link simbólico para antigravity-ide no PATH
-      ansible.builtin.shell: |
-        for bin in antigravity-ide antigravity Antigravity; do
-          if [ -f "{{ antigravity_dir }}/ide/$bin" ]; then
-            ln -sf "{{ antigravity_dir }}/ide/$bin" "{{ antigravity_bin_dir }}/antigravity-ide"
-            break
-          fi
-        done
-      changed_when: false
+    - name: Remove arquivo compactado do Antigravity IDE após instalação
+      ansible.builtin.file:
+        path: "{{ antigravity_download_dir }}/Antigravity IDE.tar.gz"
+        state: absent
+
+- name: Configuração do lançador e atalho do Antigravity IDE
+  when: antigravity_ide_tar.stat.exists or antigravity_ide_bin.stat.exists
+  become: false
+  block:
+    - name: Garante diretórios de binários e atalhos do usuário
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ antigravity_bin_dir }}"
+        - "{{ antigravity_desktop_dir }}"
+
+    - name: Remove link simbólico legado do Antigravity IDE se existir
+      ansible.builtin.file:
+        path: "{{ antigravity_bin_dir }}/antigravity-ide"
+        state: absent
+      when: antigravity_ide_bin.stat.islnk is defined and antigravity_ide_bin.stat.islnk
+
+    - name: Cria wrapper executável para antigravity-ide no PATH
+      ansible.builtin.copy:
+        dest: "{{ antigravity_bin_dir }}/antigravity-ide"
+        mode: '0755'
+        follow: false
+        content: |
+          #!/usr/bin/env bash
+          for bin in antigravity-ide antigravity Antigravity; do
+            if [ -f "{{ antigravity_dir }}/ide/$bin" ]; then
+              exec "{{ antigravity_dir }}/ide/$bin" --password-store=basic "$@"
+            fi
+          done
 
     - name: Cria atalho desktop para Antigravity IDE
       ansible.builtin.copy:
@@ -142,7 +191,7 @@
           [Desktop Entry]
           Name=Antigravity IDE
           Comment=Google Antigravity IDE
-          Exec=antigravity-ide --password-store=basic %U
+          Exec=antigravity-ide %U
           Icon={{ antigravity_dir }}/ide/antigravity-ide-color.svg
           Terminal=false
           Type=Application
@@ -152,15 +201,10 @@
           MimeType=x-scheme-handler/antigravity;
         mode: '0755'
 
-    - name: Remove arquivo compactado do Antigravity IDE após instalação
-      ansible.builtin.file:
-        path: "{{ antigravity_download_dir }}/Antigravity IDE.tar.gz"
-        state: absent
-
 - name: Atualiza banco de dados de atalhos e cache do GNOME
   ansible.builtin.shell: |
     update-desktop-database "{{ antigravity_desktop_dir }}" 2>/dev/null || true
     touch "{{ antigravity_desktop_dir }}"
-  when: antigravity_standalone_tar.stat.exists or antigravity_ide_tar.stat.exists
+  when: antigravity_standalone_tar.stat.exists or antigravity_ide_tar.stat.exists or antigravity_standalone_bin.stat.exists or antigravity_ide_bin.stat.exists
   become: false
   changed_when: false
