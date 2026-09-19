@@ -47,6 +47,7 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
   - `curl` e `wget` (ferramentas padrão de download e requisições via terminal)
 - **Suporte a Biometria (Impressão Digital):**
   - Instalação de `fprintd` e `libpam-fprintd` para integração nativa com leitores biométricos compatíveis com a `libfprint`, disponibilizando o cadastro de digitais diretamente nas configurações de usuários do GNOME.
+  - Ativação automatizada do perfil biométrico no PAM via `pam-auth-update --enable fprintd`, habilitando autenticação por digital para `sudo`, Polkit e logins de sistema com fallback transparente para senha.
 - **Flatpak & Flathub:** Suporte nativo ao Flathub integrado ao GNOME Software (`gnome-software-plugin-flatpak`, `xdg-desktop-portal-gnome`), suporte a FUSE (`libfuse2t64`), temas Adwaita/Adw-gtk3, cliente VPN **Trayscale** (`dev.deedles.Trayscale`) e utilitários (`Flatseal`, `Warehouse`, `Extension Manager`).
 
 ### 2. Repositórios Upstream Oficiais (`01-extrepo.yaml`)
@@ -124,7 +125,12 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
   - Repositório deb822 moderno em `/etc/apt/sources.list.d/vivaldi.sources`.
   - Instalação e atualização automatizada do pacote `vivaldi-stable`.
 
-### 11. Customização GNOME & Backup/Restore (`99-gnome-extensions.yaml`)
+### 11. Chromium Browser (`11-chromium.yaml`)
+- **Configuração Global do Chromium:**
+  - Configuração do armazenamento de senhas básico (`--password-store=basic`) em `/etc/chromium.d/password-store`.
+  - Evita bloqueios por chaveiro GNOME Keyring em sessões com autologin ativado.
+
+### 12. Customização GNOME & Backup/Restore (`99-gnome-extensions.yaml`)
 - **Instalação Silenciosa (`gext`):** Utiliza `gnome-extensions-cli` via backend `--filesystem`, dispensando prompts interativos na tela.
 - **12 Extensões GNOME 48:**
   - *Dash to Panel* (barra inferior unificada), *AppIndicator*, *Blur my Shell*, *Burn My Windows*, *Caffeine*, *Custom Hot Corners Extended*, *Clipboard Indicator*, *No Overview*, *Tiling Shell*, *Wallpaper Switcher*, *Window Is Ready Remover*, *Fly-Pie*.
@@ -204,6 +210,9 @@ Você pode repassar argumentos e tags diretamente pelo `./bootstrap.sh` (ou via 
 
 # Executar apenas a instalação do Vivaldi
 ./bootstrap.sh --tags vivaldi
+
+# Executar apenas a configuração do Chromium
+./bootstrap.sh --tags chromium
 
 # Executar tudo, exceto virtualização
 ./bootstrap.sh --skip-tags virt
