@@ -103,7 +103,7 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
 ### 7. Google Antigravity (`07-antigravity.yaml`)
 - Instalação modular do **Antigravity Standalone** e **Antigravity IDE**:
   - Extração inteligente de pacotes colocados em `~/Downloads/`.
-  - Links simbólicos no `~/.local/bin/` (`antigravity` e `antigravity-ide`).
+  - Wrappers executáveis no `~/.local/bin/` (`antigravity` e `antigravity-ide`) com injeção automática de `--password-store=basic`.
   - Atalhos `.desktop` com ícones oficiais e integração ao menu de aplicativos do GNOME.
   - Remoção automática dos tarballs pós-instalação para manter o estado limpo e idempotente.
 
