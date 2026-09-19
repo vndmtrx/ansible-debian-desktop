@@ -1,0 +1,107 @@
+---
+# sistema/tasks/12-dns.yaml
+# yamllint disable rule:line-length
+
+- name: Configuração de DNS Seguro (uBlockDNS, systemd-resolved e Tailscale)
+  become: true
+  block:
+    # --------------------------------------------------------------------------
+    # 1. Sanidade e Preparação do resolv.conf
+    # --------------------------------------------------------------------------
+    - name: Garante que /etc/resolv.conf não possui atributo imutável
+      ansible.builtin.file:
+        path: /etc/resolv.conf
+        attributes: -i
+      failed_when: false
+
+    # --------------------------------------------------------------------------
+    # 2. Configuração do systemd-resolved
+    # --------------------------------------------------------------------------
+    - name: Garante que o pacote do systemd-resolved está instalado
+      ansible.builtin.apt:
+        name: systemd-resolved
+        state: present
+
+    - name: Garante que o serviço systemd-resolved está ativo e habilitado
+      ansible.builtin.systemd_service:
+        name: systemd-resolved.service
+        state: started
+        enabled: true
+
+    - name: Garante a existência do diretório de drop-ins do systemd-resolved
+      ansible.builtin.file:
+        path: /etc/systemd/resolved.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Configura drop-in do uBlockDNS com DoT no systemd-resolved
+      ansible.builtin.copy:
+        dest: /etc/systemd/resolved.conf.d/ublockdns.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Resolve]
+          DNS={{ ublockdns_servers | join(' ') }}
+          DNSOverTLS={{ ublockdns_over_tls }}
+          Domains={{ ublockdns_domains }}
+      notify: Restart systemd-resolved
+
+    # --------------------------------------------------------------------------
+    # 3. Ajuste do Link Simbólico do resolv.conf
+    # --------------------------------------------------------------------------
+    - name: Força o link simbólico do /etc/resolv.conf para o stub-resolv.conf
+      ansible.builtin.file:
+        src: /run/systemd/resolve/stub-resolv.conf
+        dest: /etc/resolv.conf
+        state: link
+        force: yes
+
+    # --------------------------------------------------------------------------
+    # 4. Integração do NetworkManager
+    # --------------------------------------------------------------------------
+    - name: Garante a existência do diretório de drop-ins do NetworkManager
+      ansible.builtin.file:
+        path: /etc/NetworkManager/conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Configura o NetworkManager para delegar DNS exclusivamente ao systemd-resolved
+      ansible.builtin.copy:
+        dest: /etc/NetworkManager/conf.d/dns.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [main]
+          dns=systemd-resolved
+      notify: Restart NetworkManager
+
+    # --------------------------------------------------------------------------
+    # 5. Configuração do Tailscale (MagicDNS)
+    # --------------------------------------------------------------------------
+    - name: Aplica reinicializações de serviços pendentes antes do Tailscale
+      ansible.builtin.meta: flush_handlers
+
+    - name: Garante que o serviço tailscaled está em execução
+      ansible.builtin.systemd_service:
+        name: tailscaled.service
+        state: started
+        enabled: true
+
+    - name: Verifica se o cliente Tailscale está autenticado e conectado
+      ansible.builtin.command:
+        cmd: tailscale status
+      register: tailscale_status
+      changed_when: false
+      failed_when: false
+
+    - name: Configura o Tailscale para aceitar DNS (MagicDNS via tailscale0)
+      ansible.builtin.command:
+        cmd: tailscale up --accept-dns=true
+      when: tailscale_status.rc == 0
+      changed_when: false

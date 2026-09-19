@@ -46,6 +46,7 @@ utilitarios_hardware:
   - psmisc
   - curl
   - wget
+  - bind9-dnsutils
 
 # Ferramentas para suporte a leitor biométrico (impressão digital)
 # Usado em: sistema/tasks/00-base.yaml
@@ -256,3 +257,25 @@ pcloud_desktop_dir: "{{ ansible_env.HOME }}/.local/share/applications"
 # Código público da API do pCloud (usado exclusivamente para consultar a URL de download direto do AppImage)
 # Este é um token público de link de download oficial da pCloud, portanto é seguro e esperado estar versionado no projeto.
 pcloud_api_code: "XZopbc5ZpqOBs9mkVRk4zDHD7TjDJpQBcfzk"
+
+# ==============================================================================
+# CONFIGURAÇÃO DE DNS SEGURO (UBLOCKDNS & SYSTEMD-RESOLVED)
+# ==============================================================================
+
+# Identificador exclusivo de perfil (tag/token) do uBlockDNS
+# Usado em: sistema/tasks/12-dns.yaml
+ublockdns_tag: "6qeb530f"
+
+# Domínio base para DNS-over-TLS do uBlockDNS
+ublockdns_dot_domain: "dot.ublockdns.com"
+
+# Servidores upstream do uBlockDNS com SNI para DNS-over-TLS (DoT)
+# Usado em: sistema/tasks/12-dns.yaml
+ublockdns_servers:
+  - "52.72.192.218#{{ ublockdns_tag }}.{{ ublockdns_dot_domain }}"
+  - "52.203.102.84#{{ ublockdns_tag }}.{{ ublockdns_dot_domain }}"
+
+# Parâmetros de resolução global do systemd-resolved
+# Usado em: sistema/tasks/12-dns.yaml
+ublockdns_over_tls: "yes"
+ublockdns_domains: "~."

@@ -93,6 +93,15 @@
     - browser
     - apps
 
+- name: Importar configurações de DNS (uBlockDNS & systemd-resolved)
+  ansible.builtin.import_tasks: 12-dns.yaml
+  tags:
+    - dns
+    - ublockdns
+    - systemd-resolved
+    - rede
+    - network
+
 - name: Importar configurações das extensões GNOME
   ansible.builtin.import_tasks: 99-gnome-extensions.yaml
   tags:

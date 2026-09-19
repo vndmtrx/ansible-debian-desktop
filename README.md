@@ -130,7 +130,16 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
   - Configuração do armazenamento de senhas básico (`--password-store=basic`) em `/etc/chromium.d/password-store`.
   - Evita bloqueios por chaveiro GNOME Keyring em sessões com autologin ativado.
 
-### 12. Customização GNOME & Backup/Restore (`99-gnome-extensions.yaml`)
+### 12. DNS Seguro: uBlockDNS DoT & systemd-resolved (`12-dns.yaml`)
+- **Resolução Central com Criptografia (DNS-over-TLS):**
+  - Instalação e habilitação do `systemd-resolved` como resolvedor local stub listener (`127.0.0.53`).
+  - Drop-in declarativo `/etc/systemd/resolved.conf.d/ublockdns.conf` configurando upstream uBlockDNS via DoT (`DNSOverTLS=yes`) e rota global padrão (`Domains=~.`), utilizando IP fixo + SNI do perfil (`IP#token.dot.ublockdns.com`).
+  - Variável `ublockdns_tag` em `sistema/defaults/main.yaml` facilitando a troca rápida de perfil ou token.
+  - Enforçamento do link simbólico `/etc/resolv.conf -> /run/systemd/resolve/stub-resolv.conf`.
+  - Delegação transparente do NetworkManager (`/etc/NetworkManager/conf.d/dns.conf` com `dns=systemd-resolved`), impedindo a injeção indesejada de DNS de DHCP local.
+  - Integração com o Tailscale MagicDNS (`tailscale up --accept-dns=true`), garantindo resolução de nós da rede mesh (`~ts.net`) sem sobrescrever a rota padrão DoT.
+
+### 13. Customização GNOME & Backup/Restore (`99-gnome-extensions.yaml`)
 - **Instalação Silenciosa (`gext`):** Utiliza `gnome-extensions-cli` via backend `--filesystem`, dispensando prompts interativos na tela.
 - **12 Extensões GNOME 48:**
   - *Dash to Panel* (barra inferior unificada), *AppIndicator*, *Blur my Shell*, *Burn My Windows*, *Caffeine*, *Custom Hot Corners Extended*, *Clipboard Indicator*, *No Overview*, *Tiling Shell*, *Wallpaper Switcher*, *Window Is Ready Remover*, *Fly-Pie*.
