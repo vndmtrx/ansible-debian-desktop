@@ -82,7 +82,7 @@
           [Desktop Entry]
           Name=Antigravity
           Comment=Google Antigravity Standalone
-          Exec=antigravity %U
+          Exec=antigravity --password-store=basic %U
           Icon={{ antigravity_dir }}/standalone/antigravity-black.svg
           Terminal=false
           Type=Application
@@ -142,7 +142,7 @@
           [Desktop Entry]
           Name=Antigravity IDE
           Comment=Google Antigravity IDE
-          Exec=antigravity-ide %U
+          Exec=antigravity-ide --password-store=basic %U
           Icon={{ antigravity_dir }}/ide/antigravity-ide-color.svg
           Terminal=false
           Type=Application
