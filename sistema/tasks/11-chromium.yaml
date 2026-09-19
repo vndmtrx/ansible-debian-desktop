@@ -1,0 +1,22 @@
+---
+# sistema/tasks/11-chromium.yaml
+
+- name: Configuração global do navegador Chromium
+  become: true
+  block:
+    - name: Garante diretório de configuração do Chromium
+      ansible.builtin.file:
+        path: /etc/chromium.d
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Configura password-store basic para o Chromium
+      ansible.builtin.copy:
+        dest: /etc/chromium.d/password-store
+        content: |
+          export CHROMIUM_FLAGS="$CHROMIUM_FLAGS --password-store=basic"
+        mode: '0755'
+        owner: root
+        group: root
