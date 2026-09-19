@@ -85,6 +85,14 @@
     - browser
     - apps
 
+- name: Importar configurações do Chromium
+  ansible.builtin.import_tasks: 11-chromium.yaml
+  tags:
+    - chromium
+    - navegadores
+    - browser
+    - apps
+
 - name: Importar configurações das extensões GNOME
   ansible.builtin.import_tasks: 99-gnome-extensions.yaml
   tags:
