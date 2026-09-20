@@ -46,8 +46,7 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
   - `psmisc` (`killall`, `fuser`, `pstree`)
   - `curl` e `wget` (ferramentas padrão de download e requisições via terminal)
 - **Suporte a Biometria (Impressão Digital):**
-  - Instalação de `fprintd` e `libpam-fprintd` para integração nativa com leitores biométricos compatíveis com a `libfprint`, disponibilizando o cadastro de digitais diretamente nas configurações de usuários do GNOME.
-  - Ativação automatizada do perfil biométrico no PAM via `pam-auth-update --enable fprintd`, habilitando autenticação por digital para `sudo`, Polkit e logins de sistema com fallback transparente para senha.
+  - Instalação de `fprintd` e `libpam-fprintd` para integração nativa com leitores biométricos compatíveis com a `libfprint`, disponibilizando o cadastro e uso de digitais nas configurações de usuários do GNOME e diálogos visuais sem interceptar o `sudo` no terminal com esperas de timeout.
 - **Flatpak & Flathub:** Suporte nativo ao Flathub integrado ao GNOME Software (`gnome-software-plugin-flatpak`, `xdg-desktop-portal-gnome`), suporte a FUSE (`libfuse2t64`), temas Adwaita/Adw-gtk3, cliente VPN **Trayscale** (`dev.deedles.Trayscale`) e utilitários (`Flatseal`, `Warehouse`, `Extension Manager`).
 
 ### 2. Repositórios Upstream Oficiais (`01-extrepo.yaml`)
@@ -58,6 +57,9 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
   - **Tailscale:** Repositório oficial para a VPN Mesh.
 
 ### 3. Ambiente do Usuário & Shell (`02-usuario.yaml`)
+- **Elevação de Privilégios Fluida (`sudoers.d`):**
+  - Configuração do drop-in `/etc/sudoers.d/99-{{ ansible_user_id }}-nopasswd` com permissões seguras `0440` e validação atômica via `visudo`.
+  - Garante `NOPASSWD:ALL` para o usuário logado com precedência sobre as regras do instalador/grupo sudo, eliminando prompts repetitivos de senha em rotinas de automação e desenvolvimento.
 - **Padrão XDG & Estrutura de Trabalho:**
   - Binários locais consolidados em `~/.local/bin` (integrado ao `$PATH`).
   - Criação automática dos diretórios de trabalho: `~/du/dev`, `~/du/conf`, `~/du/backups`, `~/du/dev/tensor`, `~/du/dev/github` e `~/du/dev/docker-stacks`.
@@ -130,14 +132,15 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
   - Configuração do armazenamento de senhas básico (`--password-store=basic`) em `/etc/chromium.d/password-store`.
   - Evita bloqueios por chaveiro GNOME Keyring em sessões com autologin ativado.
 
-### 12. DNS Seguro: uBlockDNS DoT & systemd-resolved (`12-dns.yaml`)
+### 12. DNS Seguro: NextDNS DoT & systemd-resolved (`12-dns.yaml`)
 - **Resolução Central com Criptografia (DNS-over-TLS):**
   - Instalação e habilitação do `systemd-resolved` como resolvedor local stub listener (`127.0.0.53`).
-  - Drop-in declarativo `/etc/systemd/resolved.conf.d/ublockdns.conf` configurando upstream uBlockDNS via DoT (`DNSOverTLS=yes`), rota global padrão (`Domains=~.`), cache local (`Cache=yes`) e retenção de registros expirados (`StaleRetentionSec=1800`), utilizando IP fixo + SNI do perfil (`IP#token.dot.ublockdns.com`).
-  - Variável `ublockdns_tag` em `sistema/defaults/main.yaml` facilitando a troca rápida de perfil ou token.
+  - Drop-in declarativo `/etc/systemd/resolved.conf.d/nextdns.conf` configurando upstream NextDNS via DoT (`DNSOverTLS=yes`), rota global padrão (`Domains=~.`), cache local (`Cache=yes`) e retenção de registros expirados (`StaleRetentionSec=1800`), preservando `/etc/systemd/resolved.conf` limpo com os padrões de distribuição e utilizando servidores IPv4 e IPv6 com SNI do perfil (`IP#id.dns.nextdns.io`).
+  - Variável `nextdns_id` em `sistema/defaults/main.yaml` facilitando a troca rápida de perfil ou conta.
   - Enforçamento do link simbólico `/etc/resolv.conf -> /run/systemd/resolve/stub-resolv.conf`.
-  - Delegação transparente do NetworkManager (`/etc/NetworkManager/conf.d/dns.conf` com `dns=systemd-resolved`), impedindo a injeção indesejada de DNS de DHCP local.
-  - Integração com o Tailscale MagicDNS (`tailscale up --accept-dns=true`), garantindo resolução de nós da rede mesh (`~ts.net`) sem sobrescrever a rota padrão DoT.
+  - Delegação transparente do NetworkManager (`/etc/NetworkManager/conf.d/dns.conf` com `dns=systemd-resolved`).
+  - Drop-in global de perfil no NetworkManager (`/etc/NetworkManager/conf.d/99-ignore-dhcp-dns.conf`) com `ipv4.ignore-auto-dns=yes`, `ipv6.ignore-auto-dns=yes` e `dns-priority=100`, impedindo que qualquer interface de rede reivindique `Default Route: yes` ou injete servidores DNS recebidos via DHCP.
+  - Integração com o Tailscale MagicDNS (`tailscale up --accept-dns=true`), garantindo resolução privada de nós da rede mesh (`~ts.net`) sem sobrescrever a rota padrão DoT.
 
 ### 13. Customização GNOME & Backup/Restore (`99-gnome-extensions.yaml`)
 - **Instalação Silenciosa (`gext`):** Utiliza `gnome-extensions-cli` via backend `--filesystem`, dispensando prompts interativos na tela.
@@ -374,6 +377,7 @@ Alinhado às melhores práticas do Ansible (níveis de precedência):
 | Variável | Descrição | Padrão |
 | :--- | :--- | :--- |
 | `atualiza_sistema` | Executa `apt upgrade` completo do sistema | `false` |
+| `nextdns_id` | Identificador exclusivo de perfil do NextDNS | `'2bf169'` |
 | `versao_java` | Identificador do Java no SDKMAN! | `'26-tem'` |
 | `versao_erlang` | Versão do Erlang/OTP compilada via ASDF | `'29.0.6'` |
 | `versao_elixir` | Versão do Elixir instalada via ASDF | `'1.20.4-otp-29'` |
