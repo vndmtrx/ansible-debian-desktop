@@ -261,26 +261,28 @@ pcloud_desktop_dir: "{{ ansible_env.HOME }}/.local/share/applications"
 pcloud_api_code: "XZopbc5ZpqOBs9mkVRk4zDHD7TjDJpQBcfzk"
 
 # ==============================================================================
-# CONFIGURAÇÃO DE DNS SEGURO (UBLOCKDNS & SYSTEMD-RESOLVED)
+# CONFIGURAÇÃO DE DNS SEGURO (NEXTDNS & SYSTEMD-RESOLVED)
 # ==============================================================================
 
-# Identificador exclusivo de perfil (tag/token) do uBlockDNS
+# Identificador exclusivo de perfil (tag/token) do NextDNS
 # Usado em: sistema/tasks/12-dns.yaml
-ublockdns_tag: "6qeb530f"
+nextdns_id: "2bf169"
 
-# Domínio base para DNS-over-TLS do uBlockDNS
-ublockdns_dot_domain: "dot.ublockdns.com"
+# Domínio base para DNS-over-TLS do NextDNS
+nextdns_dot_domain: "dns.nextdns.io"
 
-# Servidores upstream do uBlockDNS com SNI para DNS-over-TLS (DoT)
+# Servidores upstream do NextDNS com SNI para DNS-over-TLS (DoT)
 # Usado em: sistema/tasks/12-dns.yaml
-ublockdns_servers:
-  - "52.72.192.218#{{ ublockdns_tag }}.{{ ublockdns_dot_domain }}"
-  - "52.203.102.84#{{ ublockdns_tag }}.{{ ublockdns_dot_domain }}"
+nextdns_servers:
+  - "45.90.28.0#{{ nextdns_id }}.{{ nextdns_dot_domain }}"
+  - "2a07:a8c0::#{{ nextdns_id }}.{{ nextdns_dot_domain }}"
+  - "45.90.30.0#{{ nextdns_id }}.{{ nextdns_dot_domain }}"
+  - "2a07:a8c1::#{{ nextdns_id }}.{{ nextdns_dot_domain }}"
 
 # Parâmetros de resolução global e cache do systemd-resolved
 # Usado em: sistema/tasks/12-dns.yaml
-ublockdns_over_tls: "yes"
-ublockdns_domains: "~."
-ublockdns_cache: "yes"
-ublockdns_cache_min_ttl_sec: 60
-ublockdns_stale_retention_sec: 1800
+nextdns_over_tls: "yes"
+nextdns_domains: "~."
+nextdns_cache: "yes"
+nextdns_cache_min_ttl_sec: 60
+nextdns_stale_retention_sec: 1800
