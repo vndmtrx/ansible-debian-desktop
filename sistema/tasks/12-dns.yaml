@@ -47,6 +47,9 @@
           DNS={{ ublockdns_servers | join(' ') }}
           DNSOverTLS={{ ublockdns_over_tls }}
           Domains={{ ublockdns_domains }}
+          Cache={{ ublockdns_cache }}
+          CacheMinTTLSec={{ ublockdns_cache_min_ttl_sec }}
+          StaleRetentionSec={{ ublockdns_stale_retention_sec }}
       notify: Restart systemd-resolved
 
     # --------------------------------------------------------------------------

@@ -133,7 +133,7 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
 ### 12. DNS Seguro: uBlockDNS DoT & systemd-resolved (`12-dns.yaml`)
 - **Resolução Central com Criptografia (DNS-over-TLS):**
   - Instalação e habilitação do `systemd-resolved` como resolvedor local stub listener (`127.0.0.53`).
-  - Drop-in declarativo `/etc/systemd/resolved.conf.d/ublockdns.conf` configurando upstream uBlockDNS via DoT (`DNSOverTLS=yes`) e rota global padrão (`Domains=~.`), utilizando IP fixo + SNI do perfil (`IP#token.dot.ublockdns.com`).
+  - Drop-in declarativo `/etc/systemd/resolved.conf.d/ublockdns.conf` configurando upstream uBlockDNS via DoT (`DNSOverTLS=yes`), rota global padrão (`Domains=~.`), cache local (`Cache=yes`) e retenção de registros expirados (`StaleRetentionSec=1800`), utilizando IP fixo + SNI do perfil (`IP#token.dot.ublockdns.com`).
   - Variável `ublockdns_tag` em `sistema/defaults/main.yaml` facilitando a troca rápida de perfil ou token.
   - Enforçamento do link simbólico `/etc/resolv.conf -> /run/systemd/resolve/stub-resolv.conf`.
   - Delegação transparente do NetworkManager (`/etc/NetworkManager/conf.d/dns.conf` com `dns=systemd-resolved`), impedindo a injeção indesejada de DNS de DHCP local.

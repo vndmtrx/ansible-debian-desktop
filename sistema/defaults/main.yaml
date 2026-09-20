@@ -169,7 +169,8 @@ aliases_bash:
   - 'mtr="mtr -t"'
   - 'rebootbios="sudo systemctl reboot --firmware"'
   - 'eza="eza --color=auto"'
-  - 'tensor="docker run -it --rm -p 8888:8888 -v $HOME/du/dev/tensor:/tf/notebooks tensorflow/tensorflow:latest-jupyter"'
+  - 'tensor="docker run -it --rm -p 8888:8888 -v $HOME/du/ia/tensor:/tf/notebooks tensorflow/tensorflow:latest-jupyter"'
+  - 'torch="docker run -it --rm -p 8888:8888 -v $HOME/du/ia/pytorch:/home/jovyan/work quay.io/jupyter/pytorch-notebook:latest"'
   - 'plantuml="docker run -it --rm -p 8080:8080 plantuml/plantuml-server:jetty"'
   - 'salvar-extensoes="$HOME/.local/bin/salvar-extensoes"'
   - 'backup-seguranca="$HOME/.local/bin/backup-seguranca"'
@@ -276,7 +277,10 @@ ublockdns_servers:
   - "52.72.192.218#{{ ublockdns_tag }}.{{ ublockdns_dot_domain }}"
   - "52.203.102.84#{{ ublockdns_tag }}.{{ ublockdns_dot_domain }}"
 
-# Parâmetros de resolução global do systemd-resolved
+# Parâmetros de resolução global e cache do systemd-resolved
 # Usado em: sistema/tasks/12-dns.yaml
 ublockdns_over_tls: "yes"
 ublockdns_domains: "~."
+ublockdns_cache: "yes"
+ublockdns_cache_min_ttl_sec: 60
+ublockdns_stale_retention_sec: 1800
