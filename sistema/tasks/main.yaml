@@ -93,11 +93,11 @@
     - browser
     - apps
 
-- name: Importar configurações de DNS (uBlockDNS & systemd-resolved)
+- name: Importar configurações de DNS (NextDNS & systemd-resolved)
   ansible.builtin.import_tasks: 12-dns.yaml
   tags:
     - dns
-    - ublockdns
+    - nextdns
     - systemd-resolved
     - rede
     - network
