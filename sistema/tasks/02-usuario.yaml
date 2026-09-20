@@ -1,6 +1,16 @@
 ---
 # sistema/tasks/02-usuario.yaml
 
+- name: Configura sudo sem senha (NOPASSWD) para o usuário logado
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/99-{{ ansible_user_id }}-nopasswd"
+    content: "{{ ansible_user_id }} ALL=(ALL) NOPASSWD:ALL\n"
+    owner: root
+    group: root
+    mode: '0440'
+    validate: '/usr/sbin/visudo -cf %s'
+  become: true
+
 - name: Ajusta o LibreWolf para usar o touch
   ansible.builtin.lineinfile:
     path: /etc/security/pam_env.conf
