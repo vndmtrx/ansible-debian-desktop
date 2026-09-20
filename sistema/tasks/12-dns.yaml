@@ -2,7 +2,7 @@
 # sistema/tasks/12-dns.yaml
 # yamllint disable rule:line-length
 
-- name: Configuração de DNS Seguro (uBlockDNS, systemd-resolved e Tailscale)
+- name: Configuração de DNS Seguro (NextDNS, systemd-resolved e Tailscale)
   become: true
   block:
     # --------------------------------------------------------------------------
@@ -36,20 +36,20 @@
         group: root
         mode: '0755'
 
-    - name: Configura drop-in do uBlockDNS com DoT no systemd-resolved
+    - name: Configura drop-in do NextDNS com DNS-over-TLS no systemd-resolved
       ansible.builtin.copy:
-        dest: /etc/systemd/resolved.conf.d/ublockdns.conf
+        dest: /etc/systemd/resolved.conf.d/nextdns.conf
         owner: root
         group: root
         mode: '0644'
         content: |
           [Resolve]
-          DNS={{ ublockdns_servers | join(' ') }}
-          DNSOverTLS={{ ublockdns_over_tls }}
-          Domains={{ ublockdns_domains }}
-          Cache={{ ublockdns_cache }}
-          CacheMinTTLSec={{ ublockdns_cache_min_ttl_sec }}
-          StaleRetentionSec={{ ublockdns_stale_retention_sec }}
+          DNS={{ nextdns_servers | join(' ') }}
+          DNSOverTLS={{ nextdns_over_tls }}
+          Domains={{ nextdns_domains }}
+          Cache={{ nextdns_cache }}
+          CacheMinTTLSec={{ nextdns_cache_min_ttl_sec }}
+          StaleRetentionSec={{ nextdns_stale_retention_sec }}
       notify: Restart systemd-resolved
 
     # --------------------------------------------------------------------------
@@ -82,6 +82,20 @@
         content: |
           [main]
           dns=systemd-resolved
+      notify: Restart NetworkManager
+
+    - name: Criar override global no NetworkManager para ignorar DNS de interfaces
+      ansible.builtin.copy:
+        dest: /etc/NetworkManager/conf.d/99-ignore-dhcp-dns.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [connection]
+          ipv4.ignore-auto-dns=yes
+          ipv6.ignore-auto-dns=yes
+          ipv4.dns-priority=100
+          ipv6.dns-priority=100
       notify: Restart NetworkManager
 
     # --------------------------------------------------------------------------
