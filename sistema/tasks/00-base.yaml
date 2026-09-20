@@ -98,21 +98,6 @@
     state: present
   become: true
 
-- name: Verifica se a autenticação biométrica (PAM fprintd) já está ativa
-  ansible.builtin.command:
-    cmd: grep -q "pam_fprintd.so" /etc/pam.d/common-auth
-  register: pam_fprintd_check
-  changed_when: false
-  failed_when: false
-
-- name: Habilita autenticação biométrica no PAM via pam-auth-update
-  ansible.builtin.command:
-    cmd: pam-auth-update --enable fprintd
-  environment:
-    DEBIAN_FRONTEND: noninteractive
-  become: true
-  when: pam_fprintd_check.rc != 0
-
 - name: Habilita serviços e timers de integridade do sistema
   ansible.builtin.systemd_service:
     name: "{{ item }}"
