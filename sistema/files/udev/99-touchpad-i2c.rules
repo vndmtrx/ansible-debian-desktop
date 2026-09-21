@@ -1,0 +1,2 @@
+ACTION=="add|bind", SUBSYSTEM=="pci", ATTR{vendor}=="0x8086", ATTR{device}=="0xa0e9", ATTR{power/control}="on"
+ACTION=="add|bind", KERNEL=="0000:00:15.1", SUBSYSTEM=="pci", ATTR{power/control}="on"

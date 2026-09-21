@@ -47,6 +47,8 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
   - `curl` e `wget` (ferramentas padrão de download e requisições via terminal)
 - **Suporte a Biometria (Impressão Digital):**
   - Instalação de `fprintd` e `libpam-fprintd` para integração nativa com leitores biométricos compatíveis com a `libfprint`, disponibilizando o cadastro e uso de digitais nas configurações de usuários do GNOME e diálogos visuais sem interceptar o `sudo` no terminal com esperas de timeout.
+- **Persistência de Energia do Touchpad (Regra udev):**
+  - Configuração da regra `/etc/udev/rules.d/99-touchpad-i2c.rules` desativando a suspensão dinâmica (*runtime power management* com `power/control="on"`) no controlador Intel Tiger Lake-LP Serial IO I2C (`8086:a0e9`), impedindo congelamentos, travamentos intermitentes ou hibernação indevida do touchpad.
 - **Flatpak & Flathub:** Suporte nativo ao Flathub integrado ao GNOME Software (`gnome-software-plugin-flatpak`, `xdg-desktop-portal-gnome`), suporte a FUSE (`libfuse2t64`), temas Adwaita/Adw-gtk3, cliente VPN **Trayscale** (`dev.deedles.Trayscale`) e utilitários (`Flatseal`, `Warehouse`, `Extension Manager`).
 
 ### 2. Repositórios Upstream Oficiais (`01-extrepo.yaml`)

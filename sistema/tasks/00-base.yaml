@@ -98,6 +98,16 @@
     state: present
   become: true
 
+- name: Configura regra udev para evitar suspensão (runtime PM) do controlador I2C do touchpad
+  ansible.builtin.copy:
+    src: udev/99-touchpad-i2c.rules
+    dest: /etc/udev/rules.d/99-touchpad-i2c.rules
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Recarrega regras do udev
+  become: true
+
 - name: Habilita serviços e timers de integridade do sistema
   ansible.builtin.systemd_service:
     name: "{{ item }}"

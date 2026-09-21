@@ -30,3 +30,16 @@
     name: NetworkManager.service
     state: restarted
   become: true
+
+# Handlers para regras do udev
+- name: Recarrega regras do udev
+  ansible.builtin.command: udevadm control --reload-rules
+  become: true
+  changed_when: true
+  notify: Dispara regras do udev
+
+- name: Dispara regras do udev
+  ansible.builtin.command: udevadm trigger
+  become: true
+  changed_when: true
+
