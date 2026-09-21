@@ -191,8 +191,11 @@ echo -e "${GREEN}  ✓ Espaço em disco expandido com sucesso!${RESET}"
 # ==============================================================================
 echo -e "\n${BOLD}${CYAN}[5/5] Otimizando parâmetros do GRUB, mascarando serviços e gerando initramfs...${RESET}"
 if [ -f /etc/default/grub ]; then
-    sed -i -E 's/resume=[^ "	]+//' /etc/default/grub || true
+    sed -i -E "s/resume=[^ \"'	]+//" /etc/default/grub || true
     sed -i -E "s/\bsplash\b//" /etc/default/grub || true
+    sed -i -E "s/[[:blank:]]+(['\"])/\1/g" /etc/default/grub || true
+    sed -i -E "s/(['\"])[[:blank:]]+/\1/g" /etc/default/grub || true
+    sed -i -E "s/[[:blank:]]{2,}/ /g" /etc/default/grub || true
     sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=1/" /etc/default/grub || true
     update-grub >/dev/null
     echo -e "${GREEN}  ✓ GRUB atualizado (removido resume=/splash, timeout reduzido para 1s).${RESET}"

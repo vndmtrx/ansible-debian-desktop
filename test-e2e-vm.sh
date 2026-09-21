@@ -238,8 +238,11 @@ fi
 
 # E. Limpeza do GRUB e otimizações de Userspace
 echo "⚙️ [6/6] Ajustando parâmetros de boot do GRUB, Plymouth e initramfs..."
-sudo sed -i -E 's/resume=[^ "	]+//' /etc/default/grub || true
+sudo sed -i -E "s/resume=[^ \"'	]+//" /etc/default/grub || true
 sudo sed -i -E "s/\bsplash\b//" /etc/default/grub || true
+sudo sed -i -E "s/[[:blank:]]+(['\"])/\1/g" /etc/default/grub || true
+sudo sed -i -E "s/(['\"])[[:blank:]]+/\1/g" /etc/default/grub || true
+sudo sed -i -E "s/[[:blank:]]{2,}/ /g" /etc/default/grub || true
 sudo sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=1/" /etc/default/grub || true
 sudo update-grub >/dev/null
 
