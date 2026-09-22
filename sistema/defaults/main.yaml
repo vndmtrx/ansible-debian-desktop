@@ -95,6 +95,7 @@ apps_terminal:
 apps_gui:
   - tilix
   - chromium
+  - chromium-l10n
   - gufw
   - seahorse
 
