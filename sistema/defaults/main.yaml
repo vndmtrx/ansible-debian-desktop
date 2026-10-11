@@ -186,10 +186,11 @@ asdf_instalacao_limpa: false
 # Usado em: sistema/tasks/05-sdkman.yaml
 versao_java: '26-tem'
 
-# Versões do Erlang e Elixir instaladas via ASDF
+# Versões do Erlang, Elixir e Ruby instaladas via ASDF
 # Usado em: sistema/tasks/04-asdf-shims.yaml
 versao_erlang: '29.1'
 versao_elixir: '1.20.4-otp-29'
+versao_ruby: '3.3.6'
 
 # Diretórios base para Docker e Libvirt
 # Usado em: sistema/tasks/06-virtualizacao-containers.yaml

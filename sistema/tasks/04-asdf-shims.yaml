@@ -1,8 +1,8 @@
 ---
 # sistema/tasks/04-asdf-shims.yaml
 
-# Dependências específicas para compilação do Erlang e execução do Elixir
-- name: Instala dependências dos plugins do ASDF (Erlang e Elixir)
+# Dependências específicas para compilação do Erlang, Elixir e Ruby
+- name: Instala dependências dos plugins do ASDF (Erlang, Elixir e Ruby)
   ansible.builtin.apt:
     name:
       - build-essential
@@ -14,6 +14,9 @@
       - libgl1-mesa-dev
       - libglu1-mesa-dev
       - libpng-dev
+      - libyaml-dev
+      - libreadline-dev
+      - libffi-dev
     state: present
   become: true
 
@@ -55,6 +58,22 @@
   when: not asdf_elixir_plugin_stat.stat.exists
   become: false
 
+- name: Verifica se o plugin Ruby do ASDF está instalado
+  ansible.builtin.stat:
+    path: "{{ asdf_data_dir }}/plugins/ruby"
+  register: asdf_ruby_plugin_stat
+  become: false
+
+- name: Adiciona plugin do Ruby
+  ansible.builtin.shell: |
+    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
+    export PATH="$ASDF_DATA_DIR/shims:$HOME/.local/bin:$PATH"
+    asdf plugin add ruby
+  args:
+    executable: /bin/bash
+  when: not asdf_ruby_plugin_stat.stat.exists
+  become: false
+
 # Verificação e instalação do Erlang
 - name: Verifica se a versão do Erlang já está compilada
   ansible.builtin.stat:
@@ -91,6 +110,24 @@
   notify: Reshim
   become: false
 
+# Verificação e instalação do Ruby
+- name: Verifica se a versão do Ruby já está compilada
+  ansible.builtin.stat:
+    path: "{{ asdf_data_dir }}/installs/ruby/{{ versao_ruby }}"
+  register: asdf_ruby_version_stat
+  become: false
+
+- name: Instala versão do Ruby via ASDF
+  ansible.builtin.shell: |
+    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
+    export PATH="$ASDF_DATA_DIR/shims:$HOME/.local/bin:$PATH"
+    asdf install ruby {{ versao_ruby }}
+  args:
+    executable: /bin/bash
+  when: not asdf_ruby_version_stat.stat.exists
+  notify: Reshim
+  become: false
+
 # Configuração de versões globais via .tool-versions (100% idempotente)
 - name: Define versão global do Erlang em .tool-versions
   ansible.builtin.lineinfile:
@@ -109,6 +146,40 @@
     line: "elixir {{ versao_elixir }}"
     create: true
     mode: '0644'
+  notify: Reshim
+  become: false
+
+- name: Define versão global do Ruby em .tool-versions
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_env.HOME }}/.tool-versions"
+    regexp: '^ruby\s+'
+    line: "ruby {{ versao_ruby }}"
+    create: true
+    mode: '0644'
+  notify: Reshim
+  become: false
+
+# Garantir presença do Bundler no Ruby instalado
+- name: Verifica se o Bundler está instalado no Ruby do ASDF
+  ansible.builtin.shell: |
+    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
+    export PATH="$ASDF_DATA_DIR/shims:$HOME/.local/bin:$PATH"
+    gem list -i bundler
+  args:
+    executable: /bin/bash
+  register: gem_bundler_check
+  changed_when: false
+  failed_when: false
+  become: false
+
+- name: Instala gem Bundler no Ruby do ASDF
+  ansible.builtin.shell: |
+    export ASDF_DATA_DIR="{{ asdf_data_dir }}"
+    export PATH="$ASDF_DATA_DIR/shims:$HOME/.local/bin:$PATH"
+    gem install bundler
+  args:
+    executable: /bin/bash
+  when: gem_bundler_check.rc != 0
   notify: Reshim
   become: false
 
