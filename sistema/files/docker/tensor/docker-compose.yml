@@ -1,0 +1,10 @@
+services:
+  tensor:
+    image: tensorflow/tensorflow:latest-jupyter
+    container_name: tensor
+    ports:
+      - "8888:8888"
+    volumes:
+      - ${HOME}/du/docker/binds/tensor:/tf/notebooks
+    stdin_open: true
+    tty: true

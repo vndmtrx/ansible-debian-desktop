@@ -134,9 +134,19 @@ pacotes_extrepo:
 diretorios_usuario:
   - "{{ ansible_env.HOME }}/du/dev"
   - "{{ ansible_env.HOME }}/du/conf"
-  - "{{ ansible_env.HOME }}/du/dev/tensor"
   - "{{ ansible_env.HOME }}/du/dev/github"
-  - "{{ ansible_env.HOME }}/du/dev/docker-stacks"
+  - "{{ ansible_env.HOME }}/du/docker"
+  - "{{ ansible_env.HOME }}/du/docker/stacks"
+  - "{{ ansible_env.HOME }}/du/docker/stacks/overleaf"
+  - "{{ ansible_env.HOME }}/du/docker/stacks/tensor"
+  - "{{ ansible_env.HOME }}/du/docker/stacks/torch"
+  - "{{ ansible_env.HOME }}/du/docker/stacks/plantuml"
+  - "{{ ansible_env.HOME }}/du/docker/binds"
+  - "{{ ansible_env.HOME }}/du/docker/binds/tensor"
+  - "{{ ansible_env.HOME }}/du/docker/binds/pytorch"
+  - "{{ ansible_env.HOME }}/.local/share/docker/binds/overleaf/data"
+  - "{{ ansible_env.HOME }}/.local/share/docker/binds/overleaf/mongo"
+  - "{{ ansible_env.HOME }}/.local/share/docker/binds/overleaf/redis"
 
 # Aliases para o Bash
 # Usado em: sistema/tasks/02-usuario.yaml
@@ -152,9 +162,8 @@ diretorios_usuario:
 #       bat: Visualizador de arquivos com syntax highlighting (Debian batcat)
 #       fd: Busca ultrarrápida de arquivos e diretórios (Debian fdfind)
 #       du: Análise gráfica e intuitiva de uso de disco (dust)
-#   - Ambientes em containers descartáveis:
-#       tensor: Sobe container interativo do Jupyter/TensorFlow na porta 8888 (--rm)
-#       plantuml: Sobe servidor local Jetty do PlantUML na porta 8080 (--rm)
+#       blink: Desliga a iluminação da tela (backlight Intel)
+#       unblink: Restaura a iluminação máxima da tela (backlight Intel)
 #   - Scripts locais de segurança e configuração:
 #       salvar-extensoes: Exporta configurações ativas do dconf para ~/du/conf/
 #       backup-seguranca: Cria backup comprimido e criptografado com GPG
@@ -170,12 +179,11 @@ aliases_bash:
   - 'mtr="mtr -t"'
   - 'rebootbios="sudo systemctl reboot --firmware"'
   - 'eza="eza --color=auto"'
-  - 'tensor="docker run -it --rm -p 8888:8888 -v $HOME/du/ia/tensor:/tf/notebooks tensorflow/tensorflow:latest-jupyter"'
-  - 'torch="docker run -it --rm -p 8888:8888 -v $HOME/du/ia/pytorch:/home/jovyan/work quay.io/jupyter/pytorch-notebook:latest"'
-  - 'plantuml="docker run -it --rm -p 8080:8080 plantuml/plantuml-server:jetty"'
   - 'salvar-extensoes="$HOME/.local/bin/salvar-extensoes"'
   - 'backup-seguranca="$HOME/.local/bin/backup-seguranca"'
   - 'restore-seguranca="$HOME/.local/bin/restore-seguranca"'
+  - 'blink="echo 0 | sudo tee /sys/class/backlight/intel_backlight/brightness"'
+  - 'unblink="cat /sys/class/backlight/intel_backlight/max_brightness | sudo tee /sys/class/backlight/intel_backlight/brightness"'
 
 # Configurações do ASDF Core
 # Usado em: sistema/tasks/03-asdf.yaml

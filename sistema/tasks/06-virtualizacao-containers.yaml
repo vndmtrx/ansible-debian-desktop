@@ -43,3 +43,17 @@
   loop: "{{ plugins_vagrant }}"
   when: item not in vagrant_plugins_installed.stdout
   become: false
+
+- name: Garante arquivos docker-compose das stacks do usuário
+  ansible.builtin.copy:
+    src: "docker/{{ item }}/docker-compose.yml"
+    dest: "{{ ansible_env.HOME }}/du/docker/stacks/{{ item }}/docker-compose.yml"
+    mode: '0644'
+  loop:
+    - overleaf
+    - tensor
+    - torch
+    - plantuml
+  become: false
+
+

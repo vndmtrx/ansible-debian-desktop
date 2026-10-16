@@ -1,0 +1,10 @@
+services:
+  torch:
+    image: quay.io/jupyter/pytorch-notebook:latest
+    container_name: torch
+    ports:
+      - "8888:8888"
+    volumes:
+      - ${HOME}/du/docker/binds/pytorch:/home/jovyan/work
+    stdin_open: true
+    tty: true

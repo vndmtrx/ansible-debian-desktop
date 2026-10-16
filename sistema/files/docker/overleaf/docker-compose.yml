@@ -1,0 +1,65 @@
+services:
+  sharelatex:
+    image: sharelatex/sharelatex:latest
+    container_name: sharelatex
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+    environment:
+      OVERLEAF_APP_NAME: "Overleaf Local"
+      OVERLEAF_SITE_LANGUAGE: "pt"
+      OVERLEAF_MONGO_URL: "mongodb://mongo:27017/sharelatex?replicaSet=overleaf"
+      OVERLEAF_REDIS_HOST: "redis"
+      REDIS_HOST: "redis"
+      ENABLED_LINKED_FILE_TYPES: "project_file,project_output_file"
+      ENABLE_CONVERSIONS: "true"
+      EMAIL_CONFIRMATION_DISABLED: "true"
+      OVERLEAF_INVITE_TOKEN_SECRET: "eb7d71f5455f1f014ac5cc530a1288202a5488e681895cbb6a969c24022f52b3"
+    volumes:
+      - ${HOME}/.local/share/docker/binds/overleaf/data:/var/lib/overleaf
+
+  mongo:
+    image: mongo:8.0
+    container_name: sharelatex_mongo
+    restart: unless-stopped
+    command: ["--replSet", "overleaf", "--bind_ip_all"]
+    logging:
+      driver: "none"
+    volumes:
+      - ${HOME}/.local/share/docker/binds/overleaf/mongo:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo-init:
+    image: mongo:8.0
+    container_name: sharelatex_mongo_init
+    restart: "no"
+    logging:
+      driver: "none"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    entrypoint:
+      - bash
+      - -c
+      - |
+        mongosh --host mongo:27017 --eval 'db.isMaster().primary || rs.initiate({ _id: "overleaf", members: [ { _id: 0, host: "mongo:27017" } ] })'
+
+  redis:
+    image: redis:7-alpine
+    container_name: sharelatex_redis
+    restart: unless-stopped
+    logging:
+      driver: "none"
+    volumes:
+      - ${HOME}/.local/share/docker/binds/overleaf/redis:/data

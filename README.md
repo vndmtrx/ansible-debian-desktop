@@ -64,7 +64,7 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
   - Garante `NOPASSWD:ALL` para o usuário logado com precedência sobre as regras do instalador/grupo sudo, eliminando prompts repetitivos de senha em rotinas de automação e desenvolvimento.
 - **Padrão XDG & Estrutura de Trabalho:**
   - Binários locais consolidados em `~/.local/bin` (integrado ao `$PATH`).
-  - Criação automática dos diretórios de trabalho: `~/du/dev`, `~/du/conf`, `~/du/backups`, `~/du/dev/tensor`, `~/du/dev/github` e `~/du/dev/docker-stacks`.
+  - Criação automática dos diretórios de trabalho: `~/du/dev`, `~/du/conf`, `~/du/backups`, `~/du/dev/github`, infraestrutura de stacks em `~/du/docker/stacks`, volumes do usuário em `~/du/docker/binds` (Jupyter notebooks/código) e volumes internos de containers/bancos isolados fora do sync em `~/.local/share/docker/binds`.
 - **Tilix:** Terminal em mosaico com suporte à integração VTE (`/etc/profile.d/vte-2.91.sh` e link `/etc/profile.d/vte.sh`).
 - **Backup & Restauração de Segurança (`backup.sh` & `restore.sh`):**
   - **`./backup.sh` (`backup-seguranca`):** Coleta seletiva e segura de credenciais SSH (`~/.ssh/`), chaveiros GnuPG (chaves públicas, secretas e ownertrust), chaveiros do desktop GNOME (`~/.local/share/keyrings/`), Git e dumps cirúrgicos do `dconf` (extensões, atalhos de janelas e interface). O arquivo é compactado em `.tar.bz2`, criptografado simetricamente por senha via **GPG AES-256** gerando `~/du/backups/YYYYMMDD_HHMMSS.tar.bz2.gpg`, acompanhado de checksum `*.sha256` e assinatura digital `*.asc`.
@@ -72,8 +72,11 @@ Este projeto automatiza a configuração do sistema operacional do zero, garanti
   - **`salvar-extensoes`:** Comando utilitário em `~/.local/bin/salvar-extensoes` para exportar rapidamente as preferências do GNOME para `~/du/conf/`.
 - **Aliases de Produtividade & IA:**
   - Atalhos de terminal (`ls="eza"`, `ts="tspin"`, `jc="journalctl | tspin"`, etc.).
-  - **TensorFlow com Docker (`tensor`):** Sobe um servidor Jupyter com TensorFlow oficial mapeando `~/du/dev/tensor` na porta 8888 em primeiro plano (`-it --rm`) sem sujar o Python do host.
-  - **PlantUML com Docker (`plantuml`):** Sobe o servidor oficial Jetty do PlantUML na porta 8080 em primeiro plano (`-it --rm`), pronto para renderizar diagramas e destruindo o contêiner ao encerrar.
+  - Controle de iluminação da tela (`blink` para apagar e `unblink` para restaurar o brilho máximo do display Intel via sysfs).
+  - **TensorFlow com Docker Compose (`tensor`):** Sobe a stack Jupyter do TensorFlow oficial (`docker compose up`) na porta 8888 em primeiro plano (exibe logs no terminal e encerra com `Ctrl+C`).
+  - **PyTorch com Docker Compose (`torch`):** Sobe a stack Jupyter do PyTorch oficial (`docker compose up`) na porta 8888 em primeiro plano (exibe logs no terminal e encerra com `Ctrl+C`).
+  - **PlantUML com Docker Compose (`plantuml`):** Sobe o servidor Jetty do PlantUML na porta 8080 em primeiro plano (`docker compose up`, encerra com `Ctrl+C`).
+  - **Overleaf Community Edition (`overleaf`):** Sobe a stack completa do Overleaf CE (ShareLaTeX, MongoDB e Redis) na porta 80 em primeiro plano (`docker compose up`, logs no terminal, encerra com `Ctrl+C`).
     > [!TIP]
     > **Aceleração por Hardware (GPU) no Docker:**
     > O alias padrão executa em **CPU**. Caso queira rodar em uma máquina com GPU dedicada (ex: PC de trabalho), os requisitos para cada fabricante são:
@@ -424,8 +427,12 @@ O provisionamento injeta atalhos no `~/.bashrc` (parametrizados em [`sistema/def
 | `jc` | `sudo journalctl -f \| tspin` | Acompanha logs do systemd (`journalctl -f`) colorizados em tempo real |
 | `mtr` | `mtr -t` | Diagnóstico interativo de latência/perda de pacotes em modo texto |
 | `rebootbios` | `sudo systemctl reboot --firmware` | Reinicia a máquina diretamente no setup da BIOS/UEFI |
-| `tensor` | `docker run -it --rm -p 8888:8888 -v $HOME/du/dev/tensor:/tf/notebooks tensorflow/tensorflow:latest-jupyter` | Sobe ambiente interativo do TensorFlow/Jupyter com `--rm` na porta 8888 |
-| `plantuml` | `docker run -it --rm -p 8080:8080 plantuml/plantuml-server:jetty` | Sobe servidor local Jetty do PlantUML na porta 8080 (`--rm`) |
+| `blink` | `echo 0 \| sudo tee /sys/class/backlight/intel_backlight/brightness` | Desliga a iluminação da tela (backlight Intel) |
+| `unblink` | `cat /sys/class/backlight/intel_backlight/max_brightness \| sudo tee /sys/class/backlight/intel_backlight/brightness` | Restaura a iluminação máxima da tela (backlight Intel) |
+| `tensor` | `docker compose -f $HOME/du/docker/stacks/tensor/docker-compose.yml up` | Sobe stack do TensorFlow/Jupyter na porta 8888 em foreground (encerra com `^C`) |
+| `torch` | `docker compose -f $HOME/du/docker/stacks/torch/docker-compose.yml up` | Sobe stack do PyTorch/Jupyter na porta 8888 em foreground (encerra com `^C`) |
+| `plantuml` | `docker compose -f $HOME/du/docker/stacks/plantuml/docker-compose.yml up` | Sobe stack do PlantUML na porta 8080 em foreground (encerra com `^C`) |
+| `overleaf` | `docker compose -f $HOME/du/docker/stacks/overleaf/docker-compose.yml up` | Sobe stack do Overleaf CE (ShareLaTeX, Mongo e Redis) na porta 80 em foreground (encerra com `^C`) |
 | `salvar-extensoes` | `$HOME/.local/bin/salvar-extensoes` | Exporta as preferências ativas do dconf e extensões para `~/du/conf/` |
 | `backup-seguranca` | `$HOME/.local/bin/backup-seguranca` | Gera backup comprimido e criptografado com GPG de dotfiles e chaves |
 | `restore-seguranca` | `$HOME/.local/bin/restore-seguranca` | Restaura backups criptografados no `$HOME` com validação de integridade |
